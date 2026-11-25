@@ -1494,7 +1494,11 @@
             if (canAttack) {
               const res = CombatSystem.resolveCombat(gameState, group, tx, ty);
               if (res) {
-                showBattleModal(res.log);
+                const capturedTown = (res.captured && !gameState.winner) ? getTownAt(gameState, tx, ty) : null;
+                const onAfterBattle = (capturedTown && capturedTown.owner === gameState.humanFaction)
+                  ? () => showTownModal(capturedTown)
+                  : null;
+                showBattleModal(res.log, onAfterBattle);
                 if (res.survivingAttackers.length === 0) selectedUnitId = null;
                 reachableCache = null;
                 if (gameState.winner) showVictoryModal();
@@ -1660,9 +1664,12 @@
     });
   }
 
-  function showBattleModal(log) {
-    openModal('⚔️ Battle Report', `<div class="battle-log">${log.join('<br>')}</div>`, `<button class="btn-sm" id="battle-ok">Close</button>`);
-    document.getElementById('battle-ok').onclick = closeModal;
+  function showBattleModal(log, onClose = null) {
+    openModal('⚔️ Battle Report', `<div class="battle-log">${log.join('<br>')}</div>`, `<button class="btn-sm" id="battle-ok">${onClose ? 'Manage Town' : 'Close'}</button>`);
+    document.getElementById('battle-ok').onclick = () => {
+      closeModal();
+      if (onClose) onClose();
+    };
   }
 
   function showVictoryModal() {
