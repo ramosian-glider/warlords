@@ -119,7 +119,10 @@ Units gain XP for surviving combat (`+10 XP` per battle participated, `+15 XP` b
 * **Buying Production:**
   * The player opens a town's management sheet, views the faction's 5 available unit blueprints, and pays the one-time **Installation Cost** (`unit.cost` in Gold) to install that blueprint into the town.
   * Once installed, the town automatically produces `1` unit of that type every `unit.buildTurns` turns indefinitely (until the player buys a different blueprint or stops production).
-  * **Spawn Placement:** Produced units spawn on the town tile if `< 6` units are present; otherwise, they spawn on an adjacent open friendly/empty tile (or pause at `0` turns until space clears).
+  * **Spawn Placement & Overflow:**
+    * If the town tile has `< 6` units (`MAX_STACK`), the produced unit spawns directly on the town tile and `turnsRemaining` resets to `unit.buildTurns`.
+    * **Overflow:** If the town tile is full (`6` units), the engine scans the 8 adjacent tiles (top-left to bottom-right) and spawns the unit on the first in-bounds tile that is not `MOUNTAINS`, contains no hostile/neutral units, and has `< 6` friendly units.
+    * **Blocked / Deferred:** If both the town tile and all valid adjacent tiles are full or blocked, spawning is deferred with `turnsRemaining = 0` (the active blueprint is preserved and no progress is lost) and retried automatically at the start of the owner's next turn until space clears.
 
 ### 3.5 Victory & Elimination (`WinConditionSystem`)
 * Checked immediately after any town capture (`onTownCaptured` hook):
