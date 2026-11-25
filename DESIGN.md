@@ -116,9 +116,11 @@ Units gain XP for surviving combat (`+10 XP` per battle participated, `+15 XP` b
 ### 3.4 Economy & Town Production (`EconomySystem`)
 * **Income:** Each owned town generates `+25 Gold` per turn (plus optional variance `20–35 Gold` assigned per town at map generation).
 * **Production Slots:** Each town has **1 active production slot** (`producingUnitId`, `turnsRemaining`).
-* **Buying Production:**
-  * The player opens a town's management sheet, views the faction's 5 available unit blueprints, and pays the one-time **Installation Cost** (`unit.cost` in Gold) to install that blueprint into the town.
-  * Once installed, the town automatically produces `1` unit of that type every `unit.buildTurns` turns indefinitely (until the player buys a different blueprint or stops production).
+* **Buying & Switching Production:**
+  * The player opens a town's management sheet, views the faction's 5 available unit blueprints, and pays a **one-time Unlock Cost** (`unit.cost` in Gold) to permanently unlock that blueprint for that town (`town.unlockedUnits`).
+  * Once unlocked, switching between any unlocked blueprints in that town is **free**. If a town is captured and later recaptured, the faction's unlocked blueprints in that town are preserved (only the active queue resets on capture).
+  * **Queued Switching:** If the town is idle, production starts immediately. If the town is already mid-production, switching queues the new blueprint (`nextProdUnit`) so the current unit finishes and spawns first before switching automatically.
+  * Once active, the town automatically produces `1` unit of that type every `unit.buildTurns` turns indefinitely (until the player switches to another blueprint).
   * **Spawn Placement & Overflow:**
     * If the town tile has `< 6` units (`MAX_STACK`), the produced unit spawns directly on the town tile and `turnsRemaining` resets to `unit.buildTurns`.
     * **Overflow:** If the town tile is full (`6` units), the engine scans the 8 adjacent tiles (top-left to bottom-right) and spawns the unit on the first in-bounds tile that is not `MOUNTAINS`, contains no hostile/neutral units, and has `< 6` friendly units.
