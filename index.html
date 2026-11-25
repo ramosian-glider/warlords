@@ -290,16 +290,16 @@
     if (!def) return;
     const terrain = ctx.tile.hasTown ? 'TOWN' : ctx.tile.terrain;
     if (def.traits.includes('TOWN_DEFENDER') && ctx.tile.hasTown && ctx.isDefender) ctx.def += 2;
-    if (def.traits.includes('HOLY_AURA') || ctx.allies.some(a => CONFIG.UNITS[a.type]?.traits.includes('HOLY_AURA'))) {
-      if (ctx.enemies.some(e => e.owner === 'UNDEAD')) ctx.atk += 1;
+    if (def.traits.includes('HOLY_AURA') || ctx.allies.some(a => a.hp > 0 && CONFIG.UNITS[a.type]?.traits.includes('HOLY_AURA'))) {
+      if (ctx.enemies.some(e => e.hp > 0 && e.owner === 'UNDEAD')) ctx.atk += 1;
     }
-    if (def.traits.includes('CHARGE') && terrain === 'PLAINS' && !ctx.isDefender) ctx.atk += 2;
+    if (def.traits.includes('CHARGE') && terrain === 'PLAINS' && !ctx.isDefender && ctx.round === 1) ctx.atk += 2;
     if (def.traits.includes('WOODS_MASTER') && terrain === 'WOODS') { ctx.atk += 1; ctx.def += 1; }
     if (def.traits.includes('PLAINS_BONUS') && terrain === 'PLAINS') ctx.atk += 1;
     if (def.traits.includes('MOUNTAIN_HOME') && terrain === 'MOUNTAINS') ctx.def += 2;
     if (def.traits.includes('SNOW_BONUS') && terrain === 'SNOW') { ctx.atk += 2; ctx.def += 2; }
     if (def.traits.includes('PACK_HUNTER')) {
-      const wolves = ctx.allies.filter(a => a.id !== ctx.unit.id && a.type === 'UND_WOLF').length;
+      const wolves = ctx.allies.filter(a => a.hp > 0 && a.id !== ctx.unit.id && a.type === 'UND_WOLF').length;
       ctx.atk += wolves;
     }
   });
@@ -612,12 +612,12 @@
       }
       return { hits, rolls };
     },
-    getEffectiveStats(unit, tile, allies, enemies, isDefender) {
+    getEffectiveStats(unit, tile, allies, enemies, isDefender, round = 1) {
       const def = CONFIG.UNITS[unit.type];
       const lvl = getUnitLevelInfo(unit);
       const tMod = CONFIG.TERRAIN_MODS[tile.hasTown ? 'TOWN' : tile.terrain];
       const ctx = {
-        unit, tile, allies, enemies, isDefender,
+        unit, tile, allies, enemies, isDefender, round,
         atk: def.atk + lvl.atk + tMod.defaultAtk,
         def: def.def + lvl.def + tMod.defaultDef
       };
@@ -641,30 +641,39 @@
       const initCtx = Hooks.emit('onCombatInit', { attackerBand: A, defenderBand: D, defenderTile, defenderStrikesFirst: false });
 
       const log = [];
-      if (initCtx.defenderStrikesFirst) log.push('🏰 Town Defense: Defender strikes first!');
+      if (initCtx.defenderStrikesFirst) log.push('🏰 Town Defense: Defender strikes first (Round 1)!');
 
       let ai = 0, di = 0, round = 0;
-      while (ai < A.length && di < D.length && round < 20) {
+      while (ai < A.length && di < D.length) {
         round++;
         const atkUnit = A[ai], defUnit = D[di];
-        const atkStats = this.getEffectiveStats(atkUnit, defenderTile, A, D, false);
-        const defStats = this.getEffectiveStats(defUnit, defenderTile, D, A, true);
+        const atkStats = this.getEffectiveStats(atkUnit, defenderTile, A, D, false, round);
+        const defStats = this.getEffectiveStats(defUnit, defenderTile, D, A, true, round);
 
-        const performStrike = (striker, strikerStats, target, targetStats, isDefStrike) => {
+        const rollStrike = (striker, strikerStats, targetStats) => {
           const atkRoll = this.rollDice(strikerStats.atk, 4);
           const defRoll = this.rollDice(targetStats.def, 5);
           const dmg = Math.max(1, atkRoll.hits - defRoll.hits);
-          target.hp = Math.max(0, target.hp - dmg);
-          log.push(`R${round}: ${CONFIG.UNITS[striker.type].emoji}→${CONFIG.UNITS[target.type].emoji} (${atkRoll.hits} hits vs ${defRoll.hits} blk) = ${dmg} dmg`);
-          Hooks.emit('onCombatRound', { round, striker, target, isDefender: isDefStrike, dmg, atkRoll, defRoll });
+          return { dmg, atkRoll, defRoll };
         };
 
-        if (initCtx.defenderStrikesFirst) {
-          performStrike(defUnit, defStats, atkUnit, atkStats, true);
-          if (atkUnit.hp > 0) performStrike(atkUnit, atkStats, defUnit, defStats, false);
+        const applyStrike = (striker, target, isDefStrike, res) => {
+          target.hp = Math.max(0, target.hp - res.dmg);
+          log.push(`R${round}: ${CONFIG.UNITS[striker.type].emoji}→${CONFIG.UNITS[target.type].emoji} (${res.atkRoll.hits} hits vs ${res.defRoll.hits} blk) = ${res.dmg} dmg`);
+          Hooks.emit('onCombatRound', { round, striker, target, isDefender: isDefStrike, dmg: res.dmg, atkRoll: res.atkRoll, defRoll: res.defRoll });
+        };
+
+        if (round === 1 && initCtx.defenderStrikesFirst) {
+          applyStrike(defUnit, atkUnit, true, rollStrike(defUnit, defStats, atkStats));
+          if (atkUnit.hp > 0) {
+            applyStrike(atkUnit, defUnit, false, rollStrike(atkUnit, atkStats, defStats));
+          }
         } else {
-          performStrike(atkUnit, atkStats, defUnit, defStats, false);
-          if (defUnit.hp > 0) performStrike(defUnit, defStats, atkUnit, atkStats, true);
+          // Simultaneous exchange
+          const atkRes = rollStrike(atkUnit, atkStats, defStats);
+          const defRes = rollStrike(defUnit, defStats, atkStats);
+          applyStrike(atkUnit, defUnit, false, atkRes);
+          applyStrike(defUnit, atkUnit, true, defRes);
         }
 
         if (atkUnit.hp <= 0) { log.push(`💀 ${CONFIG.UNITS[atkUnit.type].name} defeated!`); this.awardXp(defUnit, 15, log); this.removeUnit(state, atkUnit, defUnit, defenderTile); ai++; }
