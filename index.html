@@ -810,7 +810,9 @@
         faction.gold -= def.cost;
         unlocked.push(unitType);
       }
-      if (!town.prodUnit) {
+      const curDef = town.prodUnit ? CONFIG.UNITS[town.prodUnit] : null;
+      const canSwitchNow = !curDef || town.turnsLeft >= curDef.buildTurns;
+      if (canSwitchNow) {
         town.prodUnit = unitType;
         town.nextProdUnit = null;
         town.turnsLeft = def.buildTurns;
@@ -1162,19 +1164,22 @@
       const town = s.towns.find(t => t.owner === 'EMPIRE');
       s.units = [];
       s.factions.EMPIRE.gold = 500;
-      // Town starts producing EMP_GUARD (1t, already unlocked). Buy EMP_SCOUT (100g) mid-production.
-      const ok1 = EconomySystem.buyProduction(s, town, 'EMP_SCOUT');
-      TestRunner.assert(ok1 && s.factions.EMPIRE.gold === 400, 'Paid 100g to unlock Scout');
-      TestRunner.assert(town.prodUnit === 'EMP_GUARD' && town.nextProdUnit === 'EMP_SCOUT', 'Scout queued behind current Guard');
-      // Next turn: Guard finishes & spawns, production switches to Scout
+      // 1-turn unit (EMP_GUARD) switches immediately to EMP_PALADIN (2t, 350g)
+      const ok1 = EconomySystem.buyProduction(s, town, 'EMP_PALADIN');
+      TestRunner.assert(ok1 && s.factions.EMPIRE.gold === 150, 'Paid 350g to unlock Paladin');
+      TestRunner.assert(town.prodUnit === 'EMP_PALADIN' && town.nextProdUnit === null && town.turnsLeft === 2, '1-turn Guard switched immediately to Paladin');
+      // Advance 1 turn so Paladin is mid-production (1t left)
       EconomySystem.processTurnStart(s, 'EMPIRE');
-      TestRunner.assert(s.units.length === 1 && s.units[0].type === 'EMP_GUARD', 'Guard finished before switching');
-      TestRunner.assert(town.prodUnit === 'EMP_SCOUT' && town.nextProdUnit === null, 'Switched to Scout after Guard spawned');
-      // Switching back to already-unlocked Guard is free
+      TestRunner.assert(town.turnsLeft === 1 && s.units.length === 0, 'Paladin mid-production with 1t left');
+      // Switching back to already-unlocked Guard is free and queues behind Paladin
       const goldBefore = s.factions.EMPIRE.gold;
       const ok2 = EconomySystem.buyProduction(s, town, 'EMP_GUARD');
       TestRunner.assert(ok2 && s.factions.EMPIRE.gold === goldBefore, 'Switching to unlocked Guard costs 0 gold');
-      TestRunner.assert(town.nextProdUnit === 'EMP_GUARD', 'Guard queued behind current Scout');
+      TestRunner.assert(town.prodUnit === 'EMP_PALADIN' && town.nextProdUnit === 'EMP_GUARD', 'Guard queued behind mid-production Paladin');
+      // Next turn: Paladin finishes & spawns, production switches to Guard
+      EconomySystem.processTurnStart(s, 'EMPIRE');
+      TestRunner.assert(s.units.length === 1 && s.units[0].type === 'EMP_PALADIN', 'Paladin finished before switching');
+      TestRunner.assert(town.prodUnit === 'EMP_GUARD' && town.nextProdUnit === null, 'Switched to Guard after Paladin spawned');
     }
   };
 
