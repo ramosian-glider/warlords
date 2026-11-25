@@ -489,7 +489,7 @@
         tile.hasTown = true;
         towns.push({
           id: genId('t'), name: TOWN_NAMES[towns.length % TOWN_NAMES.length],
-          x, y, owner: null, income: CONFIG.TOWN_INCOME, prodUnit: null, turnsLeft: 0
+          x, y, owner: null, income: CONFIG.TOWN_INCOME, prodUnit: null, nextProdUnit: null, turnsLeft: 0, unlockedUnits: []
         });
       }
 
@@ -520,6 +520,8 @@
         town.owner = fId;
         const [t1, t2] = starters[fId];
         town.prodUnit = t2;
+        town.nextProdUnit = null;
+        town.unlockedUnits = [t2];
         town.turnsLeft = CONFIG.UNITS[t2].buildTurns;
         units.push(createUnit(t1, fId, town.x, town.y));
         units.push(createUnit(t2, fId, town.x, town.y));
@@ -758,7 +760,7 @@
         if (town && town.owner !== survivingAttackers[0].owner) {
           const oldOwner = town.owner;
           town.owner = survivingAttackers[0].owner;
-          town.prodUnit = null; town.turnsLeft = 0; captured = true;
+          town.prodUnit = null; town.nextProdUnit = null; town.turnsLeft = 0; captured = true;
           log.push(`🚩 ${town.name} captured by ${CONFIG.FACTIONS[town.owner].name}!`);
           Hooks.emit('onTownCaptured', { town, oldOwner, newOwner: town.owner, state });
           WinConditionSystem.check(state);
@@ -790,11 +792,23 @@
     buyProduction(state, town, unitType) {
       const def = CONFIG.UNITS[unitType];
       if (!def || town.owner !== def.faction) return false;
-      const faction = state.factions[town.owner];
-      if (faction.gold < def.cost) return false;
-      faction.gold -= def.cost;
-      town.prodUnit = unitType;
-      town.turnsLeft = def.buildTurns;
+      const unlocked = (town.unlockedUnits ??= []);
+      const isUnlocked = unlocked.includes(unitType);
+      if (!isUnlocked) {
+        const faction = state.factions[town.owner];
+        if (faction.gold < def.cost) return false;
+        faction.gold -= def.cost;
+        unlocked.push(unitType);
+      }
+      if (!town.prodUnit) {
+        town.prodUnit = unitType;
+        town.nextProdUnit = null;
+        town.turnsLeft = def.buildTurns;
+      } else if (town.prodUnit === unitType) {
+        town.nextProdUnit = null;
+      } else {
+        town.nextProdUnit = unitType;
+      }
       return true;
     },
     processTurnStart(state, factionId) {
@@ -806,7 +820,15 @@
           town.turnsLeft--;
           if (town.turnsLeft <= 0) {
             const spawned = this.spawnProducedUnit(state, town);
-            town.turnsLeft = spawned ? CONFIG.UNITS[town.prodUnit].buildTurns : 0;
+            if (spawned) {
+              if (town.nextProdUnit) {
+                town.prodUnit = town.nextProdUnit;
+                town.nextProdUnit = null;
+              }
+              town.turnsLeft = CONFIG.UNITS[town.prodUnit].buildTurns;
+            } else {
+              town.turnsLeft = 0;
+            }
           }
         }
       }
@@ -864,9 +886,12 @@
       for (const town of myTowns) {
         const wantsBuy = !town.prodUnit
           ? Math.random() < diff.aiBuyChance
-          : state.factions[factionId].gold > diff.aiUpgradeGold;
+          : (!town.nextProdUnit && state.factions[factionId].gold > diff.aiUpgradeGold);
         if (wantsBuy) {
-          const affordable = roster.filter(u => u.cost <= state.factions[factionId].gold && u.id !== town.prodUnit).sort((a, b) => b.cost - a.cost);
+          const unlocked = town.unlockedUnits || [];
+          const affordable = roster
+            .filter(u => (unlocked.includes(u.id) || u.cost <= state.factions[factionId].gold) && u.id !== town.prodUnit && u.id !== town.nextProdUnit)
+            .sort((a, b) => b.cost - a.cost);
           if (affordable.length > 0) EconomySystem.buyProduction(state, town, affordable[0].id);
         }
       }
@@ -985,7 +1010,8 @@
         ['test_save_load_roundtrip', this.test_save_load_roundtrip],
         ['test_mixed_band_reachability_and_stack_cap', this.test_mixed_band_reachability_and_stack_cap],
         ['test_ai_turn_execution', this.test_ai_turn_execution],
-        ['test_difficulty_levels', this.test_difficulty_levels]
+        ['test_difficulty_levels', this.test_difficulty_levels],
+        ['test_town_blueprints_and_queued_switch', this.test_town_blueprints_and_queued_switch]
       ];
       return tests.map(([name, fn]) => {
         try { fn(); return { name, pass: true, error: null }; }
@@ -1120,6 +1146,25 @@
       AIController.runTurn(easy, 'SYLVAN');
       const easyRemaining = getUnitsAt(easy, easyTown.x, easyTown.y).filter(u => u.owner === 'SYLVAN');
       TestRunner.assert(easyRemaining.length >= 1, 'Easy AI keeps garrison on its town');
+    },
+    test_town_blueprints_and_queued_switch() {
+      const s = MapGen.generate('EMPIRE', 10);
+      const town = s.towns.find(t => t.owner === 'EMPIRE');
+      s.units = [];
+      s.factions.EMPIRE.gold = 500;
+      // Town starts producing EMP_GUARD (1t, already unlocked). Buy EMP_SCOUT (100g) mid-production.
+      const ok1 = EconomySystem.buyProduction(s, town, 'EMP_SCOUT');
+      TestRunner.assert(ok1 && s.factions.EMPIRE.gold === 400, 'Paid 100g to unlock Scout');
+      TestRunner.assert(town.prodUnit === 'EMP_GUARD' && town.nextProdUnit === 'EMP_SCOUT', 'Scout queued behind current Guard');
+      // Next turn: Guard finishes & spawns, production switches to Scout
+      EconomySystem.processTurnStart(s, 'EMPIRE');
+      TestRunner.assert(s.units.length === 1 && s.units[0].type === 'EMP_GUARD', 'Guard finished before switching');
+      TestRunner.assert(town.prodUnit === 'EMP_SCOUT' && town.nextProdUnit === null, 'Switched to Scout after Guard spawned');
+      // Switching back to already-unlocked Guard is free
+      const goldBefore = s.factions.EMPIRE.gold;
+      const ok2 = EconomySystem.buyProduction(s, town, 'EMP_GUARD');
+      TestRunner.assert(ok2 && s.factions.EMPIRE.gold === goldBefore, 'Switching to unlocked Guard costs 0 gold');
+      TestRunner.assert(town.nextProdUnit === 'EMP_GUARD', 'Guard queued behind current Scout');
     }
   };
 
@@ -1302,8 +1347,9 @@
       } else if (town) {
         avatar.textContent = '🏰';
         title.textContent = `${town.name} (${town.owner ? CONFIG.FACTIONS[town.owner].name : 'Neutral'})`;
+        const nextSuffix = town.nextProdUnit ? ` → ${CONFIG.UNITS[town.nextProdUnit].emoji}` : '';
         sub.textContent = town.prodUnit
-          ? `Producing ${CONFIG.UNITS[town.prodUnit].emoji} ${CONFIG.UNITS[town.prodUnit].name} (${town.turnsLeft}t)`
+          ? `Producing ${CONFIG.UNITS[town.prodUnit].emoji} ${CONFIG.UNITS[town.prodUnit].name} (${town.turnsLeft}t)${nextSuffix}`
           : `+${town.income} Gold/turn • Tap to manage`;
       } else {
         const tDef = CONFIG.TERRAIN[selectedTile.terrain];
@@ -1546,27 +1592,43 @@
   function showTownModal(town) {
     const roster = Object.values(CONFIG.UNITS).filter(u => u.faction === town.owner);
     const gold = gameState.factions[town.owner].gold;
+    const unlocked = town.unlockedUnits || [];
     const cards = roster.map(u => {
-      const isCurrent = town.prodUnit === u.id, canAfford = gold >= u.cost;
+      const isCurrent = town.prodUnit === u.id;
+      const isNext = town.nextProdUnit === u.id;
+      const isUnlocked = unlocked.includes(u.id);
+      const canAfford = isUnlocked || gold >= u.cost;
+      let btnLabel = `💰 ${u.cost}`;
+      let disabled = !canAfford;
+      if (isCurrent && !town.nextProdUnit) { btnLabel = 'Active'; disabled = true; }
+      else if (isCurrent && town.nextProdUnit) { btnLabel = 'Keep'; disabled = false; }
+      else if (isNext) { btnLabel = 'Next'; disabled = true; }
+      else if (isUnlocked) { btnLabel = 'Switch'; disabled = false; }
       return `
         <div class="list-card">
           <div class="list-card-left">
             <div class="list-card-emoji">${u.emoji}</div>
             <div>
-              <div style="font-weight:700;font-size:13px">${u.name}</div>
+              <div style="font-weight:700;font-size:13px">${u.name}${isUnlocked ? ' ✓' : ''}</div>
               <div style="font-size:11px;color:var(--muted)">HP ${u.maxHp} • ATK ${u.atk} • DEF ${u.def} • ${u.buildTurns}t</div>
             </div>
           </div>
-          <button class="btn-sm" data-buy="${u.id}" ${!canAfford || isCurrent ? 'disabled' : ''}>
-            ${isCurrent ? 'Active' : `💰 ${u.cost}`}
+          <button class="btn-sm${isUnlocked && !disabled ? ' sec' : ''}" data-buy="${u.id}" ${disabled ? 'disabled' : ''}>
+            ${btnLabel}
           </button>
         </div>`;
     }).join('');
     openModal(`🏰 ${town.name}`, cards, `<button class="btn-sm sec" onclick="document.getElementById('modal-close').click()">Close</button>`);
     modalBody.querySelectorAll('[data-buy]').forEach(btn => {
       btn.onclick = () => {
-        if (EconomySystem.buyProduction(gameState, town, btn.dataset.buy)) {
-          showToast(`Producing ${CONFIG.UNITS[btn.dataset.buy].name}`); closeModal(); updateHUD();
+        const unitId = btn.dataset.buy;
+        const wasProducing = town.prodUnit;
+        if (EconomySystem.buyProduction(gameState, town, unitId)) {
+          const name = CONFIG.UNITS[unitId].name;
+          const msg = (wasProducing && town.nextProdUnit === unitId)
+            ? `Queued ${name} after current unit`
+            : `Producing ${name}`;
+          showToast(msg); closeModal(); updateHUD();
         }
       };
     });
