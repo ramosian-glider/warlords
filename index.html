@@ -202,6 +202,16 @@
     display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); font-weight: 600;
   }
   .diff-desc { font-size: 12px; color: var(--muted); min-height: 16px; }
+  .town-status {
+    background: rgba(13, 16, 20, 0.55); border: 1px solid var(--border);
+    border-radius: 10px; padding: 9px 12px; font-size: 12px; font-weight: 600;
+    color: var(--text); display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .status-pill {
+    font-size: 11px; font-weight: 700; padding: 6px 10px; border-radius: 8px;
+    background: rgba(245, 158, 11, 0.16); color: var(--accent);
+    border: 1px solid rgba(245, 158, 11, 0.4); white-space: nowrap;
+  }
 </style>
 </head>
 <body>
@@ -1593,17 +1603,30 @@
     const roster = Object.values(CONFIG.UNITS).filter(u => u.faction === town.owner);
     const gold = gameState.factions[town.owner].gold;
     const unlocked = town.unlockedUnits || [];
+    const curDef = town.prodUnit ? CONFIG.UNITS[town.prodUnit] : null;
+    const nextDef = town.nextProdUnit ? CONFIG.UNITS[town.nextProdUnit] : null;
+    const statusHtml = curDef
+      ? `<div class="town-status">
+           <span>🔨 Building: ${curDef.emoji} ${curDef.name} (${town.turnsLeft}t)</span>
+           ${nextDef ? `<span style="color:var(--accent)">→ ${nextDef.emoji} Next</span>` : ''}
+         </div>`
+      : `<div class="town-status" style="color:var(--muted)">⏸️ Idle — choose a unit to produce</div>`;
+
     const cards = roster.map(u => {
       const isCurrent = town.prodUnit === u.id;
       const isNext = town.nextProdUnit === u.id;
       const isUnlocked = unlocked.includes(u.id);
       const canAfford = isUnlocked || gold >= u.cost;
-      let btnLabel = `💰 ${u.cost}`;
-      let disabled = !canAfford;
-      if (isCurrent && !town.nextProdUnit) { btnLabel = 'Active'; disabled = true; }
-      else if (isCurrent && town.nextProdUnit) { btnLabel = 'Keep'; disabled = false; }
-      else if (isNext) { btnLabel = 'Next'; disabled = true; }
-      else if (isUnlocked) { btnLabel = 'Switch'; disabled = false; }
+      let actionHtml;
+      if (isCurrent && !town.nextProdUnit) {
+        actionHtml = `<span class="status-pill">🔨 Building</span>`;
+      } else if (isNext) {
+        actionHtml = `<span class="status-pill">⏭️ Queued</span>`;
+      } else if (isUnlocked) {
+        actionHtml = `<button class="btn-sm sec" data-buy="${u.id}">Select</button>`;
+      } else {
+        actionHtml = `<button class="btn-sm" data-buy="${u.id}" ${!canAfford ? 'disabled' : ''}>💰 ${u.cost}</button>`;
+      }
       return `
         <div class="list-card">
           <div class="list-card-left">
@@ -1613,12 +1636,10 @@
               <div style="font-size:11px;color:var(--muted)">HP ${u.maxHp} • ATK ${u.atk} • DEF ${u.def} • ${u.buildTurns}t</div>
             </div>
           </div>
-          <button class="btn-sm${isUnlocked && !disabled ? ' sec' : ''}" data-buy="${u.id}" ${disabled ? 'disabled' : ''}>
-            ${btnLabel}
-          </button>
+          ${actionHtml}
         </div>`;
     }).join('');
-    openModal(`🏰 ${town.name}`, cards, `<button class="btn-sm sec" onclick="document.getElementById('modal-close').click()">Close</button>`);
+    openModal(`🏰 ${town.name}`, statusHtml + cards, `<button class="btn-sm sec" onclick="document.getElementById('modal-close').click()">Close</button>`);
     modalBody.querySelectorAll('[data-buy]').forEach(btn => {
       btn.onclick = () => {
         const unitId = btn.dataset.buy;
