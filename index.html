@@ -294,7 +294,7 @@
       if (ctx.enemies.some(e => e.owner === 'UNDEAD')) ctx.atk += 1;
     }
     if (def.traits.includes('CHARGE') && terrain === 'PLAINS' && !ctx.isDefender) ctx.atk += 2;
-    if (def.traits.includes('WOODS_MASTER') && terrain === 'WOODS') { ctx.atk += 2; ctx.def += 2; }
+    if (def.traits.includes('WOODS_MASTER') && terrain === 'WOODS') { ctx.atk += 1; ctx.def += 1; }
     if (def.traits.includes('PLAINS_BONUS') && terrain === 'PLAINS') ctx.atk += 1;
     if (def.traits.includes('MOUNTAIN_HOME') && terrain === 'MOUNTAINS') ctx.def += 2;
     if (def.traits.includes('SNOW_BONUS') && terrain === 'SNOW') { ctx.atk += 2; ctx.def += 2; }
@@ -1250,46 +1250,6 @@
     const tile = getTile(gameState, tx, ty);
     if (!tile) return;
 
-    const selUnit = gameState.units.find(u => u.id === selectedUnitId);
-    if (selUnit && selUnit.owner === gameState.humanFaction) {
-      const group = MovementSystem.getMoveGroup(gameState, selUnit);
-      const enemiesHere = getUnitsAt(gameState, tx, ty).filter(u => u.owner !== gameState.humanFaction);
-      const townHere = getTownAt(gameState, tx, ty);
-      const isHostile = enemiesHere.length > 0 || (townHere && townHere.owner !== gameState.humanFaction);
-
-      if (isHostile && MovementSystem.getGroupMp(group) >= 1) {
-        let canAttack = CombatSystem.isAdjacent(selUnit.x, selUnit.y, tx, ty);
-        if (!canAttack && reachableCache) {
-          let bestAdj = null;
-          for (const [k, info] of reachableCache.entries()) {
-            if (CombatSystem.isAdjacent(info.x, info.y, tx, ty) && (MovementSystem.getGroupMp(group) - info.cost) >= 1) {
-              if (!bestAdj || info.cost < bestAdj.cost) bestAdj = info;
-            }
-          }
-          if (bestAdj) {
-            MovementSystem.moveGroup(gameState, group, bestAdj.x, bestAdj.y);
-            canAttack = true;
-          }
-        }
-        if (canAttack) {
-          const res = CombatSystem.resolveCombat(gameState, group, tx, ty);
-          if (res) {
-            showBattleModal(res.log);
-            if (res.survivingAttackers.length === 0) selectedUnitId = null;
-            reachableCache = null;
-            if (gameState.winner) showVictoryModal();
-            updateHUD(); render(); return;
-          }
-        }
-      }
-      const friendlyHere = getUnitsAt(gameState, tx, ty).filter(u => u.owner === gameState.humanFaction);
-      if (friendlyHere.length === 0 && reachableCache && reachableCache.has(`${tx},${ty}`)) {
-        MovementSystem.moveGroup(gameState, group, tx, ty);
-        reachableCache = null;
-        selectedTile = tile; updateHUD(); render(); return;
-      }
-    }
-
     selectedTile = tile;
     const unitsHere = getUnitsAt(gameState, tx, ty).filter(u => u.owner === gameState.humanFaction);
     if (unitsHere.length > 0) {
@@ -1323,16 +1283,43 @@
           const tx = Math.floor((e.clientX - rect.left - camera.x) / ts);
           const ty = Math.floor((e.clientY - rect.top - camera.y) / ts);
           const selUnit = gameState.units.find(u => u.id === selectedUnitId);
-          if (selUnit && reachableCache && reachableCache.has(`${tx},${ty}`)) {
-            const group = MovementSystem.getMoveGroup(gameState, selUnit);
+          if (!selUnit || selUnit.owner !== gameState.humanFaction) return;
+          const group = MovementSystem.getMoveGroup(gameState, selUnit);
+          const enemiesHere = getUnitsAt(gameState, tx, ty).filter(u => u.owner !== gameState.humanFaction);
+          const townHere = getTownAt(gameState, tx, ty);
+          const isHostile = enemiesHere.length > 0 || (townHere && townHere.owner !== gameState.humanFaction);
+
+          if (isHostile && MovementSystem.getGroupMp(group) >= 1) {
+            let canAttack = CombatSystem.isAdjacent(selUnit.x, selUnit.y, tx, ty);
+            if (!canAttack && reachableCache) {
+              let bestAdj = null;
+              for (const [k, info] of reachableCache.entries()) {
+                if (CombatSystem.isAdjacent(info.x, info.y, tx, ty) && (MovementSystem.getGroupMp(group) - info.cost) >= 1) {
+                  if (!bestAdj || info.cost < bestAdj.cost) bestAdj = info;
+                }
+              }
+              if (bestAdj) { MovementSystem.moveGroup(gameState, group, bestAdj.x, bestAdj.y); canAttack = true; }
+            }
+            if (canAttack) {
+              const res = CombatSystem.resolveCombat(gameState, group, tx, ty);
+              if (res) {
+                showBattleModal(res.log);
+                if (res.survivingAttackers.length === 0) selectedUnitId = null;
+                reachableCache = null;
+                if (gameState.winner) showVictoryModal();
+                updateHUD(); render(); return;
+              }
+            }
+          }
+
+          if (reachableCache && reachableCache.has(`${tx},${ty}`)) {
             MovementSystem.moveGroup(gameState, group, tx, ty);
             reachableCache = null;
             selectedTile = getTile(gameState, tx, ty);
-            showToast('Stacked on tile');
             updateHUD(); render();
           }
         }
-      }, 600);
+      }, 450);
     } else if (pointers.size === 2) {
       clearTimeout(longPressTimer);
       const rect = canvas.getBoundingClientRect();
