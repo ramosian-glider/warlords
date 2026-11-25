@@ -1218,10 +1218,12 @@
     const stackStrip = document.getElementById('stack-strip');
     stackStrip.innerHTML = '';
     if (selectedTile) {
-      const unitsOnTile = getUnitsAt(gameState, selectedTile.x, selectedTile.y).filter(u => u.owner === fId);
+      const friendlyOnTile = getUnitsAt(gameState, selectedTile.x, selectedTile.y).filter(u => u.owner === fId);
+      const otherOnTile = getUnitsAt(gameState, selectedTile.x, selectedTile.y).filter(u => u.owner !== fId);
       const townOnTile = getTownAt(gameState, selectedTile.x, selectedTile.y);
-      if (unitsOnTile.length > 1 || (unitsOnTile.length >= 1 && townOnTile && townOnTile.owner === fId)) {
-        unitsOnTile.forEach(u => {
+
+      if (friendlyOnTile.length > 1 || (friendlyOnTile.length >= 1 && townOnTile && townOnTile.owner === fId)) {
+        friendlyOnTile.forEach(u => {
           const btn = document.createElement('button');
           btn.className = `stack-chip${u.id === selectedUnitId ? ' active' : ''}`;
           btn.textContent = `${CONFIG.UNITS[u.type].emoji}${u.hp}`;
@@ -1240,6 +1242,33 @@
           tBtn.textContent = '🏰';
           tBtn.onclick = () => showTownModal(townOnTile);
           stackStrip.appendChild(tBtn);
+        }
+      } else if (otherOnTile.length > 0 && !selUnit) {
+        if (otherOnTile.length > 1 || townOnTile) {
+          otherOnTile.forEach(u => {
+            const btn = document.createElement('button');
+            btn.className = 'stack-chip';
+            btn.textContent = `${CONFIG.UNITS[u.type].emoji}${u.hp}`;
+            btn.onclick = () => {
+              const def = CONFIG.UNITS[u.type], lvl = getUnitLevelInfo(u);
+              const ownerName = u.owner === 'NEUTRAL' ? 'Neutral' : CONFIG.FACTIONS[u.owner].name;
+              avatar.textContent = def.emoji;
+              title.textContent = `${def.name} ${lvl.badge} • HP ${u.hp}/${getUnitMaxHp(u)}`;
+              sub.textContent = `${ownerName} • ATK ${def.atk + lvl.atk} • DEF ${def.def + lvl.def}`;
+            };
+            stackStrip.appendChild(btn);
+          });
+          if (townOnTile) {
+            const tBtn = document.createElement('button');
+            tBtn.className = 'stack-chip';
+            tBtn.textContent = '🏰';
+            tBtn.onclick = () => {
+              avatar.textContent = '🏰';
+              title.textContent = `${townOnTile.name} (${townOnTile.owner ? CONFIG.FACTIONS[townOnTile.owner].name : 'Neutral'})`;
+              sub.textContent = `+${townOnTile.income} Gold/turn • +2 DEF & First Strike`;
+            };
+            stackStrip.appendChild(tBtn);
+          }
         }
       }
     }
