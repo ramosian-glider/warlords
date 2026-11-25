@@ -148,6 +148,60 @@
   }
   .test-pass { color: #66bb6a; font-weight: 700; }
   .test-fail { color: #ef5350; font-weight: 700; }
+
+  /* New Game Controls */
+  .new-game-box {
+    display: flex; flex-direction: column; gap: 12px;
+    background: rgba(13, 16, 20, 0.45); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px;
+  }
+  .field-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--muted);
+  }
+  .faction-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  }
+  .faction-card {
+    position: relative; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 4px; padding: 10px 6px; border-radius: 10px;
+    background: var(--surface-2); border: 2px solid var(--border);
+    cursor: pointer; text-align: center; transition: border-color 0.15s, background 0.15s, transform 0.1s;
+  }
+  .faction-card input { position: absolute; opacity: 0; pointer-events: none; }
+  .faction-card:active { transform: scale(0.97); }
+  .faction-card .fc-emoji { font-size: 24px; line-height: 1; }
+  .faction-card .fc-name { font-size: 12px; font-weight: 700; color: var(--text); }
+  .faction-card.selected {
+    border-color: var(--fc-color, var(--accent));
+    background: color-mix(in srgb, var(--fc-color, var(--accent)) 22%, var(--surface-2));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--fc-color, var(--accent)) 45%, transparent);
+  }
+  .diff-wrap { display: flex; flex-direction: column; gap: 6px; }
+  .diff-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .diff-badge {
+    font-size: 12px; font-weight: 700; color: var(--accent);
+    background: rgba(245, 158, 11, 0.14); border: 1px solid rgba(245, 158, 11, 0.35);
+    padding: 2px 8px; border-radius: 999px;
+  }
+  .diff-slider {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
+    border-radius: 999px; background: var(--surface-2); outline: none;
+    border: 1px solid var(--border); cursor: pointer;
+  }
+  .diff-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 20px; height: 20px;
+    border-radius: 50%; background: var(--accent); border: 2px solid #111;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.45); cursor: pointer;
+  }
+  .diff-slider::-moz-range-thumb {
+    width: 20px; height: 20px; border-radius: 50%; background: var(--accent);
+    border: 2px solid #111; box-shadow: 0 2px 6px rgba(0,0,0,0.45); cursor: pointer;
+  }
+  .diff-ticks {
+    display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); font-weight: 600;
+  }
+  .diff-desc { font-size: 12px; color: var(--muted); min-height: 16px; }
 </style>
 </head>
 <body>
@@ -255,7 +309,12 @@
       { level: 2, xp: 25,  atk: 1, def: 1, hp: 2, badge: '•' },
       { level: 3, xp: 60,  atk: 2, def: 2, hp: 4, badge: '••' },
       { level: 4, xp: 110, atk: 3, def: 3, hp: 6, badge: '★' }
-    ]
+    ],
+    DIFFICULTIES: {
+      easy:   { id: 'easy',   label: 'Easy',   emoji: '🌱', desc: 'Passive AI that garrisons towns and expands slowly',        aiMaxBand: 2, aiBuyChance: 0.45, aiUpgradeGold: 700, aiSkipChance: 0.40, aiGarrison: 'all' },
+      normal: { id: 'normal', label: 'Normal', emoji: '⚔️', desc: 'Balanced AI that defends its capital and expands steadily', aiMaxBand: 3, aiBuyChance: 0.80, aiUpgradeGold: 500, aiSkipChance: 0.15, aiGarrison: 'capital' },
+      hard:   { id: 'hard',   label: 'Hard',   emoji: '🔥', desc: 'Aggressive AI with full bands and relentless expansion',    aiMaxBand: 4, aiBuyChance: 1.0,  aiUpgradeGold: 420, aiSkipChance: 0,    aiGarrison: 'none' }
+    }
   };
 
   // =========================================================================
@@ -371,6 +430,9 @@
       hp: def.maxHp, mp: def.maxMp, xp: 0, bandId, waited: false
     };
   }
+  function getDifficulty(state) {
+    return CONFIG.DIFFICULTIES[(state && state.difficulty) || 'normal'] || CONFIG.DIFFICULTIES.normal;
+  }
 
   // =========================================================================
   // 4. MAP GENERATOR
@@ -382,7 +444,8 @@
   ];
 
   const MapGen = {
-    generate(humanFaction = 'EMPIRE', seed = Date.now()) {
+    generate(humanFaction = 'EMPIRE', seed = Date.now(), difficulty = 'normal') {
+      const diff = CONFIG.DIFFICULTIES[difficulty] || CONFIG.DIFFICULTIES.normal;
       const rng = mulberry32(seed);
       const w = CONFIG.MAP_WIDTH;
       const h = CONFIG.MAP_HEIGHT;
@@ -494,7 +557,7 @@
       }
 
       return {
-        version: 1, turn: 1, activeFaction: humanFaction, humanFaction, winner: null,
+        version: 1, turn: 1, activeFaction: humanFaction, humanFaction, difficulty: diff.id, winner: null,
         factions: {
           EMPIRE: { gold: 150, alive: true },
           SYLVAN: { gold: 150, alive: true },
@@ -793,11 +856,16 @@
   const AIController = {
     async runTurn(state, factionId, delayMs = 0, onStep = null) {
       if (!state.factions[factionId].alive || state.winner) return;
+      const diff = getDifficulty(state);
       const pause = () => delayMs > 0 ? new Promise(r => setTimeout(r, delayMs)) : null;
       const myTowns = state.towns.filter(t => t.owner === factionId);
+      const capital = myTowns[0] || null;
       const roster = Object.values(CONFIG.UNITS).filter(u => u.faction === factionId);
       for (const town of myTowns) {
-        if (!town.prodUnit || state.factions[factionId].gold > 450) {
+        const wantsBuy = !town.prodUnit
+          ? Math.random() < diff.aiBuyChance
+          : state.factions[factionId].gold > diff.aiUpgradeGold;
+        if (wantsBuy) {
           const affordable = roster.filter(u => u.cost <= state.factions[factionId].gold && u.id !== town.prodUnit).sort((a, b) => b.cost - a.cost);
           if (affordable.length > 0) EconomySystem.buyProduction(state, town, affordable[0].id);
         }
@@ -811,7 +879,7 @@
         const coLocated = getUnitsAt(state, u.x, u.y).filter(x => x.owner === factionId && !x.bandId);
         if (coLocated.length >= 2) {
           const bandId = genId('b');
-          coLocated.slice(0, 4).forEach(x => { x.bandId = bandId; });
+          coLocated.slice(0, diff.aiMaxBand).forEach(x => { x.bandId = bandId; });
         }
       }
       const actedIds = new Set();
@@ -828,6 +896,17 @@
           if (state.winner) return;
           continue;
         }
+        // Hold garrison on owned towns based on difficulty
+        if (diff.aiGarrison !== 'none') {
+          const hereTown = getTownAt(state, u.x, u.y);
+          const shouldGarrison = hereTown && hereTown.owner === factionId &&
+            (diff.aiGarrison === 'all' || (diff.aiGarrison === 'capital' && capital && hereTown.id === capital.id));
+          if (shouldGarrison) {
+            const friendlyHere = getUnitsAt(state, u.x, u.y).filter(x => x.owner === factionId);
+            if (friendlyHere.length <= group.length) continue;
+          }
+        }
+        if (diff.aiSkipChance > 0 && Math.random() < diff.aiSkipChance) continue;
         const target = this.pickTarget(state, u.x, u.y, factionId);
         if (!target) continue;
         const { reachable } = MovementSystem.getReachableTiles(state, group);
@@ -905,7 +984,8 @@
         ['test_faction_elimination_and_victory', this.test_faction_elimination_and_victory],
         ['test_save_load_roundtrip', this.test_save_load_roundtrip],
         ['test_mixed_band_reachability_and_stack_cap', this.test_mixed_band_reachability_and_stack_cap],
-        ['test_ai_turn_execution', this.test_ai_turn_execution]
+        ['test_ai_turn_execution', this.test_ai_turn_execution],
+        ['test_difficulty_levels', this.test_difficulty_levels]
       ];
       return tests.map(([name, fn]) => {
         try { fn(); return { name, pass: true, error: null }; }
@@ -1028,6 +1108,18 @@
       EconomySystem.processTurnStart(s, 'SYLVAN');
       AIController.runTurn(s, 'SYLVAN');
       TestRunner.assert(s.factions.SYLVAN.alive, 'AI turn completes cleanly');
+    },
+    test_difficulty_levels() {
+      const easy = MapGen.generate('EMPIRE', 9, 'easy');
+      const hard = MapGen.generate('EMPIRE', 9, 'hard');
+      TestRunner.assert(easy.difficulty === 'easy' && hard.difficulty === 'hard', 'Difficulty stored on state');
+      TestRunner.assert(easy.factions.SYLVAN.gold === 150 && hard.factions.SYLVAN.gold === 150, 'Starting gold is symmetric across difficulties');
+      const easyTown = easy.towns.find(t => t.owner === 'SYLVAN');
+      const hardTown = hard.towns.find(t => t.owner === 'SYLVAN');
+      TestRunner.assert(easyTown.turnsLeft === hardTown.turnsLeft, 'Build turns are symmetric across difficulties');
+      AIController.runTurn(easy, 'SYLVAN');
+      const easyRemaining = getUnitsAt(easy, easyTown.x, easyTown.y).filter(u => u.owner === 'SYLVAN');
+      TestRunner.assert(easyRemaining.length >= 1, 'Easy AI keeps garrison on its town');
     }
   };
 
@@ -1497,27 +1589,73 @@
   }
 
   function showMenuModal() {
+    const diffOrder = ['easy', 'normal', 'hard'];
+    const curFaction = gameState.humanFaction || 'EMPIRE';
+    const curDiff = gameState.difficulty || 'normal';
+    const curDiffIdx = Math.max(0, diffOrder.indexOf(curDiff));
+    const factionCardsHtml = ['EMPIRE', 'SYLVAN', 'UNDEAD'].map(fId => {
+      const f = CONFIG.FACTIONS[fId];
+      const shortName = f.name.split(' ')[0];
+      const checked = fId === curFaction;
+      return `
+        <label class="faction-card${checked ? ' selected' : ''}" style="--fc-color:${f.color}" data-faction="${fId}">
+          <input type="radio" name="new-faction" value="${fId}" ${checked ? 'checked' : ''}>
+          <span class="fc-emoji">${f.emoji}</span>
+          <span class="fc-name">${shortName}</span>
+        </label>`;
+    }).join('');
+    const initDiff = CONFIG.DIFFICULTIES[diffOrder[curDiffIdx]];
+
     openModal('☰ Game Menu', `
-      <button class="act-btn primary" id="m-new-emp">👑 New Game: Crown Empire</button>
-      <button class="act-btn primary" id="m-new-syl">🌿 New Game: Sylvan Covenant</button>
-      <button class="act-btn primary" id="m-new-und">☠️ New Game: Blight Legion</button>
-      <hr style="border-color:var(--border);width:100%">
+      <div class="new-game-box">
+        <div class="field-label">Choose Faction</div>
+        <div class="faction-grid" id="faction-picker">${factionCardsHtml}</div>
+        <div class="diff-wrap">
+          <div class="diff-header">
+            <span class="field-label">Difficulty</span>
+            <span class="diff-badge" id="diff-badge">${initDiff.emoji} ${initDiff.label}</span>
+          </div>
+          <input type="range" class="diff-slider" id="diff-slider" min="0" max="2" step="1" value="${curDiffIdx}">
+          <div class="diff-ticks"><span>Easy</span><span>Normal</span><span>Hard</span></div>
+          <div class="diff-desc" id="diff-desc">${initDiff.desc}</div>
+        </div>
+        <button class="act-btn primary" id="m-new-start">⚔️ New Game</button>
+      </div>
       <div style="display:flex;gap:8px;">
         <button class="act-btn" style="flex:1" id="m-save">💾 Save Slot 1</button>
         <button class="act-btn" style="flex:1" id="m-load">📂 Load Slot 1</button>
       </div>
       <button class="act-btn" id="m-tests">🧪 Run Unit Tests</button>
     `);
-    const startNew = (f) => {
-      gameState = MapGen.generate(f);
+
+    const picker = document.getElementById('faction-picker');
+    picker.querySelectorAll('input[name="new-faction"]').forEach(radio => {
+      radio.onchange = () => {
+        picker.querySelectorAll('.faction-card').forEach(card => {
+          card.classList.toggle('selected', card.dataset.faction === radio.value);
+        });
+      };
+    });
+
+    const slider = document.getElementById('diff-slider');
+    const diffBadge = document.getElementById('diff-badge');
+    const diffDesc = document.getElementById('diff-desc');
+    slider.oninput = () => {
+      const d = CONFIG.DIFFICULTIES[diffOrder[Number(slider.value)]];
+      diffBadge.textContent = `${d.emoji} ${d.label}`;
+      diffDesc.textContent = d.desc;
+    };
+
+    document.getElementById('m-new-start').onclick = () => {
+      const f = picker.querySelector('input[name="new-faction"]:checked')?.value || 'EMPIRE';
+      const dId = diffOrder[Number(slider.value)] || 'normal';
+      gameState = MapGen.generate(f, Date.now(), dId);
       selectedUnitId = null; selectedTile = null; reachableCache = null;
       const startTown = gameState.towns.find(t => t.owner === f);
       if (startTown) centerCameraOn(startTown.x, startTown.y);
       closeModal(); updateHUD(); render();
+      showToast(`${CONFIG.FACTIONS[f].emoji} ${CONFIG.DIFFICULTIES[dId].label} game started`);
     };
-    document.getElementById('m-new-emp').onclick = () => startNew('EMPIRE');
-    document.getElementById('m-new-syl').onclick = () => startNew('SYLVAN');
-    document.getElementById('m-new-und').onclick = () => startNew('UNDEAD');
     document.getElementById('m-save').onclick = () => { StorageSystem.save(gameState, 'save_1'); showToast('Saved to Slot 1'); closeModal(); };
     document.getElementById('m-load').onclick = () => {
       const loaded = StorageSystem.load('save_1');
