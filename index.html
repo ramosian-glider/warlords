@@ -2027,7 +2027,7 @@
     };
     document.getElementById('m-tests').onclick = () => {
       const results = TestRunner.runAll(), passed = results.filter(r => r.pass).length;
-      const html = results.map(r => `<div class="list-card"><span style="font-size:12px;font-family:monospace">${r.name}</span><span class="${r.pass ? 'test-pass' : 'test-fail'}">${r.pass ? 'PASS' : 'FAIL'}</span></div>`).join('');
+      const html = results.map(r => `<div class="list-card"><span style="font-size:12px;font-family:monospace;min-width:0;overflow-wrap:anywhere">${r.name}</span><span class="${r.pass ? 'test-pass' : 'test-fail'}" style="flex-shrink:0">${r.pass ? 'PASS' : 'FAIL'}</span></div>`).join('');
       openModal(`Unit Tests (${passed}/${results.length})`, html, `<button class="btn-sm sec" id="t-back">Back</button>`);
       document.getElementById('t-back').onclick = showMenuModal;
     };
