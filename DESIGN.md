@@ -115,6 +115,10 @@ Units gain XP for surviving combat (`+10 XP` per battle participated, `+15 XP` b
 
 ### 3.4 Economy & Town Production (`EconomySystem`)
 * **Income:** Each owned town generates `+25 Gold` per turn (plus optional variance `20–35 Gold` assigned per town at map generation).
+* **Unit Upkeep & Bankruptcy:**
+  * Every active unit deducts a flat per-turn upkeep at the start of its owner's turn on a flattened scale (`1g` Tier 1, `1g` Tier 2, `2g` Tier 3, `3g` Tier 4, `4g` Tier 5; `0g` for neutral militia), rewarding upgrades to elite units while capping runaway swarms.
+  * If total upkeep exceeds town income, the deficit is drawn from the treasury. If the treasury drops below `0`, it floors at `0` and units automatically disband (highest upkeep first, then lowest HP) until remaining upkeep `<=` town income.
+  * Players can **Pause** production in any town at any time from the town modal to cap upkeep and save gold; AI factions similarly pause excess towns when net income gets low.
 * **Production Slots:** Each town has **1 active production slot** (`producingUnitId`, `turnsRemaining`).
 * **Buying & Switching Production:**
   * The player opens a town's management sheet, views the faction's 5 available unit blueprints, and pays a **one-time Unlock Cost** (`unit.cost` in Gold) to permanently unlock that blueprint for that town (`town.unlockedUnits`).

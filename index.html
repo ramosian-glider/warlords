@@ -297,22 +297,22 @@
       UNDEAD: { id: 'UNDEAD', name: 'Blight Legion',   emoji: '☠️', color: '#6a1b9a' }
     },
     UNITS: {
-      EMP_SCOUT:   { id: 'EMP_SCOUT',   faction: 'EMPIRE', emoji: '🥷', name: 'Shadow Scout',  cost: 100, buildTurns: 1, maxHp: 10, atk: 3, def: 2, maxMp: 12, role: 1, traits: ['WOODS_STRIDE'] },
-      EMP_GUARD:   { id: 'EMP_GUARD',   faction: 'EMPIRE', emoji: '💂', name: 'Royal Guard',   cost: 150, buildTurns: 1, maxHp: 14, atk: 4, def: 5, maxMp: 8,  role: 1, traits: ['TOWN_DEFENDER'] },
-      EMP_PALADIN: { id: 'EMP_PALADIN', faction: 'EMPIRE', emoji: '🦸', name: 'Paladin',       cost: 350, buildTurns: 2, maxHp: 20, atk: 7, def: 7, maxMp: 8,  role: 2, traits: ['HOLY_AURA'] },
-      EMP_KNIGHT:  { id: 'EMP_KNIGHT',  faction: 'EMPIRE', emoji: '🏇', name: 'Heavy Knight',  cost: 400, buildTurns: 3, maxHp: 22, atk: 8, def: 6, maxMp: 12, role: 1, traits: ['CHARGE', 'NO_MOUNTAIN'] },
-      EMP_EAGLE:   { id: 'EMP_EAGLE',   faction: 'EMPIRE', emoji: '🦅', name: 'Giant Eagle',   cost: 600, buildTurns: 4, maxHp: 24, atk: 9, def: 6, maxMp: 16, role: 3, traits: ['FLYING'] },
-      SYL_PIXIE:   { id: 'SYL_PIXIE',   faction: 'SYLVAN', emoji: '🧚', name: 'Forest Pixie',  cost: 100, buildTurns: 1, maxHp: 8,  atk: 3, def: 3, maxMp: 14, role: 3, traits: ['FLYING'] },
-      SYL_ELF:     { id: 'SYL_ELF',     faction: 'SYLVAN', emoji: '🧝', name: 'Sylvan Archer', cost: 160, buildTurns: 1, maxHp: 12, atk: 5, def: 4, maxMp: 10, role: 2, traits: ['WOODS_MASTER'] },
-      SYL_TROLL:   { id: 'SYL_TROLL',   faction: 'SYLVAN', emoji: '🧌', name: 'Moss Troll',    cost: 360, buildTurns: 2, maxHp: 26, atk: 7, def: 6, maxMp: 8,  role: 1, traits: ['REGENERATE'] },
-      SYL_UNICORN: { id: 'SYL_UNICORN', faction: 'SYLVAN', emoji: '🦄', name: 'Unicorn',       cost: 420, buildTurns: 3, maxHp: 20, atk: 8, def: 7, maxMp: 14, role: 1, traits: ['WOODS_STRIDE', 'PLAINS_BONUS'] },
-      SYL_DRAGON:  { id: 'SYL_DRAGON',  faction: 'SYLVAN', emoji: '🐉', name: 'Emerald Dragon',cost: 750, buildTurns: 5, maxHp: 32, atk: 11,def: 9, maxMp: 16, role: 3, traits: ['FLYING', 'MOUNTAIN_HOME'] },
-      UND_BAT:     { id: 'UND_BAT',     faction: 'UNDEAD', emoji: '🦇', name: 'Dread Bat',     cost: 90,  buildTurns: 1, maxHp: 8,  atk: 3, def: 2, maxMp: 14, role: 3, traits: ['FLYING'] },
-      UND_SKEL:    { id: 'UND_SKEL',    faction: 'UNDEAD', emoji: '💀', name: 'Skeleton',      cost: 120, buildTurns: 1, maxHp: 12, atk: 4, def: 4, maxMp: 8,  role: 1, traits: ['SNOW_WALKER'] },
-      UND_GHOUL:   { id: 'UND_GHOUL',   faction: 'UNDEAD', emoji: '🧟', name: 'Rotting Ghoul', cost: 300, buildTurns: 2, maxHp: 22, atk: 7, def: 5, maxMp: 8,  role: 1, traits: ['SNOW_BONUS'] },
-      UND_WOLF:    { id: 'UND_WOLF',    faction: 'UNDEAD', emoji: '🐺', name: 'Dire Wolf',     cost: 350, buildTurns: 2, maxHp: 18, atk: 8, def: 5, maxMp: 14, role: 1, traits: ['PACK_HUNTER'] },
-      UND_DEMON:   { id: 'UND_DEMON',   faction: 'UNDEAD', emoji: '👹', name: 'Abyssal Oni',   cost: 700, buildTurns: 4, maxHp: 30, atk: 11,def: 8, maxMp: 10, role: 2, traits: ['MOUNTAIN_STRIDE'] },
-      NEU_MILITIA: { id: 'NEU_MILITIA', faction: 'NEUTRAL', emoji: '🛡️', name: 'Town Militia', cost: 0,   buildTurns: 1, maxHp: 10, atk: 3, def: 4, maxMp: 0,  role: 1, traits: ['TOWN_DEFENDER'] }
+      EMP_SCOUT:   { id: 'EMP_SCOUT',   faction: 'EMPIRE', emoji: '🥷', name: 'Shadow Scout',  cost: 100, buildTurns: 1, upkeep: 1, maxHp: 10, atk: 3, def: 2, maxMp: 12, role: 1, traits: ['WOODS_STRIDE'] },
+      EMP_GUARD:   { id: 'EMP_GUARD',   faction: 'EMPIRE', emoji: '💂', name: 'Royal Guard',   cost: 150, buildTurns: 1, upkeep: 1, maxHp: 14, atk: 4, def: 5, maxMp: 8,  role: 1, traits: ['TOWN_DEFENDER'] },
+      EMP_PALADIN: { id: 'EMP_PALADIN', faction: 'EMPIRE', emoji: '🦸', name: 'Paladin',       cost: 350, buildTurns: 2, upkeep: 2, maxHp: 20, atk: 7, def: 7, maxMp: 8,  role: 2, traits: ['HOLY_AURA'] },
+      EMP_KNIGHT:  { id: 'EMP_KNIGHT',  faction: 'EMPIRE', emoji: '🏇', name: 'Heavy Knight',  cost: 400, buildTurns: 3, upkeep: 3, maxHp: 22, atk: 8, def: 6, maxMp: 12, role: 1, traits: ['CHARGE', 'NO_MOUNTAIN'] },
+      EMP_EAGLE:   { id: 'EMP_EAGLE',   faction: 'EMPIRE', emoji: '🦅', name: 'Giant Eagle',   cost: 600, buildTurns: 4, upkeep: 4, maxHp: 24, atk: 9, def: 6, maxMp: 16, role: 3, traits: ['FLYING'] },
+      SYL_PIXIE:   { id: 'SYL_PIXIE',   faction: 'SYLVAN', emoji: '🧚', name: 'Forest Pixie',  cost: 100, buildTurns: 1, upkeep: 1, maxHp: 8,  atk: 3, def: 3, maxMp: 14, role: 3, traits: ['FLYING'] },
+      SYL_ELF:     { id: 'SYL_ELF',     faction: 'SYLVAN', emoji: '🧝', name: 'Sylvan Archer', cost: 160, buildTurns: 1, upkeep: 1, maxHp: 12, atk: 5, def: 4, maxMp: 10, role: 2, traits: ['WOODS_MASTER'] },
+      SYL_TROLL:   { id: 'SYL_TROLL',   faction: 'SYLVAN', emoji: '🧌', name: 'Moss Troll',    cost: 360, buildTurns: 2, upkeep: 2, maxHp: 26, atk: 7, def: 6, maxMp: 8,  role: 1, traits: ['REGENERATE'] },
+      SYL_UNICORN: { id: 'SYL_UNICORN', faction: 'SYLVAN', emoji: '🦄', name: 'Unicorn',       cost: 420, buildTurns: 3, upkeep: 3, maxHp: 20, atk: 8, def: 7, maxMp: 14, role: 1, traits: ['WOODS_STRIDE', 'PLAINS_BONUS'] },
+      SYL_DRAGON:  { id: 'SYL_DRAGON',  faction: 'SYLVAN', emoji: '🐉', name: 'Emerald Dragon',cost: 750, buildTurns: 5, upkeep: 4, maxHp: 32, atk: 11,def: 9, maxMp: 16, role: 3, traits: ['FLYING', 'MOUNTAIN_HOME'] },
+      UND_BAT:     { id: 'UND_BAT',     faction: 'UNDEAD', emoji: '🦇', name: 'Dread Bat',     cost: 90,  buildTurns: 1, upkeep: 1, maxHp: 8,  atk: 3, def: 2, maxMp: 14, role: 3, traits: ['FLYING'] },
+      UND_SKEL:    { id: 'UND_SKEL',    faction: 'UNDEAD', emoji: '💀', name: 'Skeleton',      cost: 120, buildTurns: 1, upkeep: 1, maxHp: 12, atk: 4, def: 4, maxMp: 8,  role: 1, traits: ['SNOW_WALKER'] },
+      UND_GHOUL:   { id: 'UND_GHOUL',   faction: 'UNDEAD', emoji: '🧟', name: 'Rotting Ghoul', cost: 300, buildTurns: 2, upkeep: 2, maxHp: 22, atk: 7, def: 5, maxMp: 8,  role: 1, traits: ['SNOW_BONUS'] },
+      UND_WOLF:    { id: 'UND_WOLF',    faction: 'UNDEAD', emoji: '🐺', name: 'Dire Wolf',     cost: 350, buildTurns: 2, upkeep: 3, maxHp: 18, atk: 8, def: 5, maxMp: 14, role: 1, traits: ['PACK_HUNTER'] },
+      UND_DEMON:   { id: 'UND_DEMON',   faction: 'UNDEAD', emoji: '👹', name: 'Abyssal Oni',   cost: 700, buildTurns: 4, upkeep: 4, maxHp: 30, atk: 11,def: 8, maxMp: 10, role: 2, traits: ['MOUNTAIN_STRIDE'] },
+      NEU_MILITIA: { id: 'NEU_MILITIA', faction: 'NEUTRAL', emoji: '🛡️', name: 'Town Militia', cost: 0,   buildTurns: 1, upkeep: 0, maxHp: 10, atk: 3, def: 4, maxMp: 0,  role: 1, traits: ['TOWN_DEFENDER'] }
     },
     XP_LEVELS: [
       { level: 1, xp: 0,   atk: 0, def: 0, hp: 0, badge: '' },
@@ -799,6 +799,20 @@
   // 7. ECONOMY & WIN CONDITION SYSTEMS
   // =========================================================================
   const EconomySystem = {
+    getFactionIncome(state, factionId) {
+      return state.towns.filter(t => t.owner === factionId).reduce((s, t) => s + t.income, 0);
+    },
+    getFactionUpkeep(state, factionId) {
+      return state.units.filter(u => u.owner === factionId).reduce((s, u) => s + (CONFIG.UNITS[u.type].upkeep || 0), 0);
+    },
+    getFactionNetIncome(state, factionId) {
+      return this.getFactionIncome(state, factionId) - this.getFactionUpkeep(state, factionId);
+    },
+    pauseProduction(state, town) {
+      town.prodUnit = null;
+      town.nextProdUnit = null;
+      town.turnsLeft = 0;
+    },
     buyProduction(state, town, unitType) {
       const def = CONFIG.UNITS[unitType];
       if (!def || town.owner !== def.faction) return false;
@@ -844,8 +858,23 @@
           }
         }
       }
-      state.factions[factionId].gold += income;
-      Hooks.emit('onTurnStart', { state, factionId });
+      let upkeep = this.getFactionUpkeep(state, factionId);
+      state.factions[factionId].gold += (income - upkeep);
+      let disbanded = 0;
+      if (state.factions[factionId].gold < 0) {
+        state.factions[factionId].gold = 0;
+        while (upkeep > income) {
+          const mine = state.units.filter(u => u.owner === factionId && (CONFIG.UNITS[u.type].upkeep || 0) > 0);
+          if (mine.length === 0) break;
+          mine.sort((a, b) => (CONFIG.UNITS[b.type].upkeep - CONFIG.UNITS[a.type].upkeep) || (a.hp - b.hp));
+          const victim = mine[0];
+          state.units = state.units.filter(u => u.id !== victim.id);
+          upkeep -= CONFIG.UNITS[victim.type].upkeep || 0;
+          disbanded++;
+        }
+      }
+      Hooks.emit('onTurnStart', { state, factionId, income, upkeep, disbanded });
+      return { income, upkeep, disbanded };
     },
     spawnProducedUnit(state, town) {
       if (getUnitsAt(state, town.x, town.y).length < CONFIG.MAX_STACK) {
@@ -894,10 +923,15 @@
       const pause = () => delayMs > 0 ? new Promise(r => setTimeout(r, delayMs)) : null;
       const myTowns = state.towns.filter(t => t.owner === factionId);
       const capital = myTowns[0] || null;
+      const netIncome = EconomySystem.getFactionNetIncome(state, factionId);
       const roster = Object.values(CONFIG.UNITS).filter(u => u.faction === factionId);
       for (const town of myTowns) {
+        if (netIncome <= 2 && town.prodUnit && (!capital || town.id !== capital.id)) {
+          EconomySystem.pauseProduction(state, town);
+          continue;
+        }
         const wantsBuy = !town.prodUnit
-          ? Math.random() < diff.aiBuyChance
+          ? (netIncome > 4 && Math.random() < diff.aiBuyChance)
           : (!town.nextProdUnit && state.factions[factionId].gold > diff.aiUpgradeGold);
         if (wantsBuy) {
           const unlocked = town.unlockedUnits || [];
@@ -1023,7 +1057,8 @@
         ['test_mixed_band_reachability_and_stack_cap', this.test_mixed_band_reachability_and_stack_cap],
         ['test_ai_turn_execution', this.test_ai_turn_execution],
         ['test_difficulty_levels', this.test_difficulty_levels],
-        ['test_town_blueprints_and_queued_switch', this.test_town_blueprints_and_queued_switch]
+        ['test_town_blueprints_and_queued_switch', this.test_town_blueprints_and_queued_switch],
+        ['test_upkeep_and_bankruptcy', this.test_upkeep_and_bankruptcy]
       ];
       return tests.map(([name, fn]) => {
         try { fn(); return { name, pass: true, error: null }; }
@@ -1180,6 +1215,19 @@
       EconomySystem.processTurnStart(s, 'EMPIRE');
       TestRunner.assert(s.units.length === 1 && s.units[0].type === 'EMP_PALADIN', 'Paladin finished before switching');
       TestRunner.assert(town.prodUnit === 'EMP_GUARD' && town.nextProdUnit === null, 'Switched to Guard after Paladin spawned');
+    },
+    test_upkeep_and_bankruptcy() {
+      const s = MapGen.generate('EMPIRE', 11);
+      const town = s.towns.find(t => t.owner === 'EMPIRE');
+      EconomySystem.pauseProduction(s, town);
+      TestRunner.assert(town.prodUnit === null && town.turnsLeft === 0, 'Pause clears active production');
+      // 1 town (25g income), 7 Eagles (7 * 4g = 28g upkeep), 0 gold -> bankruptcy disbands 1 Eagle
+      s.units = [];
+      for (let i = 0; i < 7; i++) s.units.push(createUnit('EMP_EAGLE', 'EMPIRE', town.x, town.y));
+      s.factions.EMPIRE.gold = 0;
+      const res = EconomySystem.processTurnStart(s, 'EMPIRE');
+      TestRunner.assert(res.disbanded === 1 && s.units.length === 6, 'Bankruptcy disbands excess units until upkeep <= income');
+      TestRunner.assert(s.factions.EMPIRE.gold === 0, 'Treasury floors at 0 on bankruptcy');
     }
   };
 
@@ -1326,7 +1374,11 @@
 
     const ownedTowns = gameState.towns.filter(t => t.owner === fId);
     const income = ownedTowns.reduce((s, t) => s + t.income, 0);
-    document.getElementById('gold-stat').textContent = `💰 ${gameState.factions[fId].gold} (+${income})`;
+    const upkeep = EconomySystem.getFactionUpkeep(gameState, fId);
+    const net = income - upkeep;
+    const goldEl = document.getElementById('gold-stat');
+    goldEl.textContent = `💰 ${gameState.factions[fId].gold} (${net >= 0 ? '+' : ''}${net})`;
+    goldEl.style.color = net < 0 ? '#ef5350' : '';
     document.getElementById('town-stat').textContent = `🏰 ${ownedTowns.length}/${gameState.towns.length}`;
     document.getElementById('turn-stat').textContent = `T${gameState.turn}`;
 
@@ -1616,8 +1668,8 @@
     const nextDef = town.nextProdUnit ? CONFIG.UNITS[town.nextProdUnit] : null;
     const statusHtml = curDef
       ? `<div class="town-status">
-           <span>🔨 Building: ${curDef.emoji} ${curDef.name} (${town.turnsLeft}t)</span>
-           ${nextDef ? `<span style="color:var(--accent)">→ ${nextDef.emoji} Next</span>` : ''}
+           <span>🔨 ${curDef.emoji} ${curDef.name} (${town.turnsLeft}t)${nextDef ? ` → ${nextDef.emoji}` : ''}</span>
+           <button class="btn-sm sec" id="town-pause" style="padding:4px 8px;font-size:11px">⏸️ Pause</button>
          </div>`
       : `<div class="town-status" style="color:var(--muted)">⏸️ Idle — choose a unit to produce</div>`;
 
@@ -1642,13 +1694,22 @@
             <div class="list-card-emoji">${u.emoji}</div>
             <div>
               <div style="font-weight:700;font-size:13px">${u.name}${isUnlocked ? ' ✓' : ''}</div>
-              <div style="font-size:11px;color:var(--muted)">HP ${u.maxHp} • ATK ${u.atk} • DEF ${u.def} • ${u.buildTurns}t</div>
+              <div style="font-size:11px;color:var(--muted)">HP ${u.maxHp} • ATK ${u.atk} • DEF ${u.def} • ${u.buildTurns}t • ${u.upkeep}g/t</div>
             </div>
           </div>
           ${actionHtml}
         </div>`;
     }).join('');
     openModal(`🏰 ${town.name}`, statusHtml + cards, `<button class="btn-sm sec" onclick="document.getElementById('modal-close').click()">Close</button>`);
+    const pauseBtn = document.getElementById('town-pause');
+    if (pauseBtn) {
+      pauseBtn.onclick = () => {
+        EconomySystem.pauseProduction(gameState, town);
+        showToast(`${town.name} production paused`);
+        showTownModal(town);
+        updateHUD();
+      };
+    }
     modalBody.querySelectorAll('[data-buy]').forEach(btn => {
       btn.onclick = () => {
         const unitId = btn.dataset.buy;
@@ -1813,7 +1874,10 @@
     }
     if (!gameState.winner) {
       gameState.turn++;
-      EconomySystem.processTurnStart(gameState, gameState.humanFaction);
+      const turnRes = EconomySystem.processTurnStart(gameState, gameState.humanFaction);
+      if (turnRes && turnRes.disbanded > 0) {
+        showToast(`⚠️ Upkeep unpaid! Disbanded ${turnRes.disbanded} unit${turnRes.disbanded > 1 ? 's' : ''}`);
+      }
       StorageSystem.save(gameState, 'autosave');
     } else showVictoryModal();
     btnEnd.disabled = false;
