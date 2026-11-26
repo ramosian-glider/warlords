@@ -29,8 +29,8 @@ All units use single-codepoint people/creature emojis. Each faction has 5 unit t
 #### Faction A: The Crown Empire (`EMPIRE`) — Color: `#1976d2`
 | Unit ID | Emoji | Name | Cost (Buy Prod.) | Build Turns | Max HP | ATK | DEF | Max MP | Traits / Hooks |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `EMP_SCOUT` | 🥷 | Shadow Scout | `100` | `1` | `10` | `3` | `2` | `12` | `WOODS_STRIDE` (MP cost -1 in Woods) |
-| `EMP_GUARD` | 💂 | Royal Guard | `150` | `1` | `14` | `4` | `5` | `8` | `TOWN_DEFENDER` (+2 DEF in Towns) |
+| `EMP_SCOUT` | 🥷 | Shadow Scout | `100` | `1` | `10` | `3` | `2` | `14` | `WOODS_STRIDE` (MP cost -1 in Woods) |
+| `EMP_GUARD` | 💂 | Royal Guard | `150` | `1` | `14` | `4` | `5` | `10` | `TOWN_DEFENDER` (+2 DEF in Towns) |
 | `EMP_PALADIN` | 🦸 | Paladin | `350` | `2` | `20` | `7` | `7` | `8` | `HOLY_AURA` (+1 ATK to band allies vs Undead) |
 | `EMP_KNIGHT` | 🏇 | Heavy Knight | `400` | `3` | `22` | `8` | `6` | `12` | `CHARGE` (+2 ATK on Plains), `NO_MOUNTAIN` |
 | `EMP_EAGLE` | 🦅 | Giant Eagle | `600` | `4` | `24` | `9` | `6` | `16` | `FLYING` (All terrain MP cost = 2) |
@@ -47,9 +47,9 @@ All units use single-codepoint people/creature emojis. Each faction has 5 unit t
 #### Faction C: Blight Legion (`UNDEAD`) — Color: `#6a1b9a`
 | Unit ID | Emoji | Name | Cost (Buy Prod.) | Build Turns | Max HP | ATK | DEF | Max MP | Traits / Hooks |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `UND_BAT` | 🦇 | Dread Bat | `90` | `1` | `8` | `3` | `2` | `14` | `FLYING` |
-| `UND_SKEL` | 💀 | Skeleton | `120` | `1` | `12` | `4` | `4` | `8` | `SNOW_WALKER` (MP cost = 2 in Snow) |
-| `UND_GHOUL` | 🧟 | Rotting Ghoul | `300` | `2` | `22` | `7` | `5` | `8` | `SNOW_BONUS` (+2 ATK, +2 DEF in Snow) |
+| `UND_BAT` | 🦇 | Dread Bat | `90` | `1` | `9` | `4` | `2` | `14` | `FLYING` |
+| `UND_SKEL` | 💀 | Skeleton | `120` | `1` | `13` | `4` | `4` | `10` | `SNOW_WALKER` (MP cost = 2 in Snow) |
+| `UND_GHOUL` | 🧟 | Rotting Ghoul | `300` | `2` | `24` | `7` | `6` | `8` | `SNOW_BONUS` (+2 ATK, +2 DEF in Snow) |
 | `UND_WOLF` | 🐺 | Dire Wolf | `350` | `2` | `18` | `8` | `5` | `14` | `PACK_HUNTER` (+1 ATK per friendly wolf in band) |
 | `UND_DEMON` | 👹 | Abyssal Oni | `700` | `4` | `30` | `11` | `8` | `10` | `MOUNTAIN_STRIDE` (MP cost = 2 in Mountains) |
 
