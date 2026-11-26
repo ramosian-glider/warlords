@@ -711,6 +711,7 @@
       const town = getTownAt(state, defX, defY);
       const defenders = getUnitsAt(state, defX, defY);
       if (defenders.length === 0 && !town) return null;
+      for (const d of defenders) if (d.type === 'NEU_MILITIA') d.revealed = true;
       for (const u of attackerGroup) u.mp = Math.max(0, u.mp - Math.min(2, u.mp));
 
       const A = [...attackerGroup].sort((a, b) => CONFIG.UNITS[a.type].role - CONFIG.UNITS[b.type].role);
@@ -1342,7 +1343,7 @@
           ctx.fillText('🏰', px + ts * 0.5, py + ts * 0.52);
         }
 
-        const units = getUnitsAt(gameState, x, y);
+        const units = getUnitsAt(gameState, x, y).filter(u => u.type !== 'NEU_MILITIA' || u.revealed);
         if (units.length > 0) {
           const top = units[0], def = CONFIG.UNITS[top.type];
           let drawX = px, drawY = py;
