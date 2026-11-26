@@ -297,8 +297,8 @@
       UNDEAD: { id: 'UNDEAD', name: 'Blight Legion',   emoji: '☠️', color: '#6a1b9a' }
     },
     UNITS: {
-      EMP_SCOUT:   { id: 'EMP_SCOUT',   faction: 'EMPIRE', emoji: '🥷', name: 'Shadow Scout',  cost: 100, buildTurns: 1, upkeep: 1, maxHp: 10, atk: 3, def: 2, maxMp: 12, role: 1, traits: ['WOODS_STRIDE'] },
-      EMP_GUARD:   { id: 'EMP_GUARD',   faction: 'EMPIRE', emoji: '💂', name: 'Royal Guard',   cost: 150, buildTurns: 1, upkeep: 1, maxHp: 14, atk: 4, def: 5, maxMp: 8,  role: 1, traits: ['TOWN_DEFENDER'] },
+      EMP_SCOUT:   { id: 'EMP_SCOUT',   faction: 'EMPIRE', emoji: '🥷', name: 'Shadow Scout',  cost: 100, buildTurns: 1, upkeep: 1, maxHp: 10, atk: 3, def: 2, maxMp: 14, role: 1, traits: ['WOODS_STRIDE'] },
+      EMP_GUARD:   { id: 'EMP_GUARD',   faction: 'EMPIRE', emoji: '💂', name: 'Royal Guard',   cost: 150, buildTurns: 1, upkeep: 1, maxHp: 14, atk: 4, def: 5, maxMp: 10, role: 1, traits: ['TOWN_DEFENDER'] },
       EMP_PALADIN: { id: 'EMP_PALADIN', faction: 'EMPIRE', emoji: '🦸', name: 'Paladin',       cost: 350, buildTurns: 2, upkeep: 2, maxHp: 20, atk: 7, def: 7, maxMp: 8,  role: 2, traits: ['HOLY_AURA'] },
       EMP_KNIGHT:  { id: 'EMP_KNIGHT',  faction: 'EMPIRE', emoji: '🏇', name: 'Heavy Knight',  cost: 400, buildTurns: 3, upkeep: 3, maxHp: 22, atk: 8, def: 6, maxMp: 12, role: 1, traits: ['CHARGE', 'NO_MOUNTAIN'] },
       EMP_EAGLE:   { id: 'EMP_EAGLE',   faction: 'EMPIRE', emoji: '🦅', name: 'Giant Eagle',   cost: 600, buildTurns: 4, upkeep: 4, maxHp: 24, atk: 9, def: 6, maxMp: 16, role: 3, traits: ['FLYING'] },
@@ -308,7 +308,7 @@
       SYL_UNICORN: { id: 'SYL_UNICORN', faction: 'SYLVAN', emoji: '🦄', name: 'Unicorn',       cost: 420, buildTurns: 3, upkeep: 3, maxHp: 20, atk: 8, def: 7, maxMp: 14, role: 1, traits: ['WOODS_STRIDE', 'PLAINS_BONUS'] },
       SYL_DRAGON:  { id: 'SYL_DRAGON',  faction: 'SYLVAN', emoji: '🐉', name: 'Emerald Dragon',cost: 750, buildTurns: 5, upkeep: 4, maxHp: 32, atk: 11,def: 9, maxMp: 16, role: 3, traits: ['FLYING', 'MOUNTAIN_HOME'] },
       UND_BAT:     { id: 'UND_BAT',     faction: 'UNDEAD', emoji: '🦇', name: 'Dread Bat',     cost: 90,  buildTurns: 1, upkeep: 1, maxHp: 9,  atk: 4, def: 2, maxMp: 14, role: 3, traits: ['FLYING'] },
-      UND_SKEL:    { id: 'UND_SKEL',    faction: 'UNDEAD', emoji: '💀', name: 'Skeleton',      cost: 120, buildTurns: 1, upkeep: 1, maxHp: 14, atk: 5, def: 4, maxMp: 10, role: 1, traits: ['SNOW_WALKER'] },
+      UND_SKEL:    { id: 'UND_SKEL',    faction: 'UNDEAD', emoji: '💀', name: 'Skeleton',      cost: 120, buildTurns: 1, upkeep: 1, maxHp: 13, atk: 4, def: 4, maxMp: 10, role: 1, traits: ['SNOW_WALKER'] },
       UND_GHOUL:   { id: 'UND_GHOUL',   faction: 'UNDEAD', emoji: '🧟', name: 'Rotting Ghoul', cost: 300, buildTurns: 2, upkeep: 2, maxHp: 24, atk: 7, def: 6, maxMp: 8,  role: 1, traits: ['SNOW_BONUS'] },
       UND_WOLF:    { id: 'UND_WOLF',    faction: 'UNDEAD', emoji: '🐺', name: 'Dire Wolf',     cost: 350, buildTurns: 2, upkeep: 3, maxHp: 18, atk: 8, def: 5, maxMp: 14, role: 1, traits: ['PACK_HUNTER'] },
       UND_DEMON:   { id: 'UND_DEMON',   faction: 'UNDEAD', emoji: '👹', name: 'Abyssal Oni',   cost: 700, buildTurns: 4, upkeep: 4, maxHp: 30, atk: 11,def: 8, maxMp: 10, role: 2, traits: ['MOUNTAIN_STRIDE'] },
@@ -1102,10 +1102,10 @@
       s.units.push(u1, u2, u3);
       MovementSystem.bandUnitsAt(s, 1, 1, 'EMPIRE');
       const group = MovementSystem.getMoveGroup(s, u1);
-      TestRunner.assert(MovementSystem.getGroupMp(group) === 8, 'Band MP should be min (8)');
+      TestRunner.assert(MovementSystem.getGroupMp(group) === 10, 'Band MP should be min (10)');
       MovementSystem.moveGroup(s, group, 2, 1);
       MovementSystem.disbandGroup(s, group);
-      TestRunner.assert(u1.mp === 6 && u2.mp === 10 && u3.mp === 14, 'Disbanded units retain unspent MP');
+      TestRunner.assert(u1.mp === 8 && u2.mp === 12 && u3.mp === 14, 'Disbanded units retain unspent MP');
     },
     test_town_first_strike_combat() {
       const s = MapGen.generate('EMPIRE', 3);
