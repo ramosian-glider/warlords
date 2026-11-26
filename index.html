@@ -1258,8 +1258,7 @@
   // =========================================================================
   // 11. UI, CANVAS RENDERER & CONTROLLER
   // =========================================================================
-  let gameState = MapGen.generate('EMPIRE');
-  StorageSystem.save(gameState, 'autosave');
+  let gameState = null;
 
   const canvas = document.getElementById('game-canvas');
   const ctx = canvas.getContext('2d');
@@ -1309,6 +1308,7 @@
   function render() {
     const rect = mapWrap.getBoundingClientRect();
     ctx.clearRect(0, 0, rect.width, rect.height);
+    if (!gameState) return;
     const ts = CONFIG.TILE_SIZE * camera.zoom;
 
     for (let y = 0; y < gameState.map.height; y++) {
@@ -1391,6 +1391,7 @@
   }
 
   function updateHUD() {
+    if (!gameState) return;
     const fId = gameState.humanFaction, f = CONFIG.FACTIONS[fId];
     const badge = document.getElementById('faction-badge');
     badge.textContent = `${f.emoji} ${f.name.split(' ')[0]}`;
@@ -1689,6 +1690,7 @@
 
   function openModal(title, bodyHtml, footerHtml = '') {
     modalTitle.textContent = title; modalBody.innerHTML = bodyHtml; modalFooter.innerHTML = footerHtml;
+    document.getElementById('modal-close').style.visibility = gameState ? 'visible' : 'hidden';
     modalBackdrop.classList.add('open');
   }
   function closeModal() { modalBackdrop.classList.remove('open'); }
@@ -1795,13 +1797,13 @@
         <p><strong>${w.name}</strong> has conquered the realm in ${gameState.turn} turns!</p>
       </div>`,
       `<button class="btn-sm" id="vic-new">New Game</button>`);
-    document.getElementById('vic-new').onclick = () => showMenuModal();
+    document.getElementById('vic-new').onclick = () => showNewGameModal();
   }
 
-  function showMenuModal() {
+  function showNewGameModal() {
     const diffOrder = ['easy', 'normal', 'hard'];
-    const curFaction = gameState.humanFaction || 'EMPIRE';
-    const curDiff = gameState.difficulty || 'normal';
+    const curFaction = (gameState && gameState.humanFaction) || 'EMPIRE';
+    const curDiff = (gameState && gameState.difficulty) || 'normal';
     const curDiffIdx = Math.max(0, diffOrder.indexOf(curDiff));
     const factionCardsHtml = ['EMPIRE', 'SYLVAN', 'UNDEAD'].map(fId => {
       const f = CONFIG.FACTIONS[fId];
@@ -1816,7 +1818,7 @@
     }).join('');
     const initDiff = CONFIG.DIFFICULTIES[diffOrder[curDiffIdx]];
 
-    openModal('☰ Game Menu', `
+    openModal('⚔️ New Game', `
       <div class="new-game-box">
         <div class="field-label">Choose Faction</div>
         <div class="faction-grid" id="faction-picker">${factionCardsHtml}</div>
@@ -1829,14 +1831,9 @@
           <div class="diff-ticks"><span>Easy</span><span>Normal</span><span>Hard</span></div>
           <div class="diff-desc" id="diff-desc">${initDiff.desc}</div>
         </div>
-        <button class="act-btn primary" id="m-new-start">⚔️ New Game</button>
+        <button class="act-btn primary" id="m-new-start">⚔️ Start Game</button>
       </div>
-      <div style="display:flex;gap:8px;">
-        <button class="act-btn" style="flex:1" id="m-save">💾 Save Slot 1</button>
-        <button class="act-btn" style="flex:1" id="m-load">📂 Load Slot 1</button>
-      </div>
-      <button class="act-btn" id="m-tests">🧪 Run Unit Tests</button>
-    `);
+    `, `<button class="btn-sm sec" id="ng-back">Back</button>`);
 
     const picker = document.getElementById('faction-picker');
     picker.querySelectorAll('input[name="new-faction"]').forEach(radio => {
@@ -1856,21 +1853,66 @@
       diffDesc.textContent = d.desc;
     };
 
+    document.getElementById('ng-back').onclick = showMenuModal;
     document.getElementById('m-new-start').onclick = () => {
       const f = picker.querySelector('input[name="new-faction"]:checked')?.value || 'EMPIRE';
       const dId = diffOrder[Number(slider.value)] || 'normal';
       gameState = MapGen.generate(f, Date.now(), dId);
+      StorageSystem.save(gameState, 'autosave');
       selectedUnitId = null; selectedTile = null; reachableCache = null;
       const startTown = gameState.towns.find(t => t.owner === f);
       if (startTown) centerCameraOn(startTown.x, startTown.y);
       closeModal(); updateHUD(); render();
       showToast(`${CONFIG.FACTIONS[f].emoji} ${CONFIG.DIFFICULTIES[dId].label} game started`);
     };
-    document.getElementById('m-save').onclick = () => { StorageSystem.save(gameState, 'save_1'); showToast('Saved to Slot 1'); closeModal(); };
+  }
+
+  function showMenuModal() {
+    const hasAutosave = !gameState && !!StorageSystem.load('autosave');
+    const continueBtn = gameState
+      ? `<button class="act-btn" id="m-continue">▶️ Resume Game</button>`
+      : (hasAutosave ? `<button class="act-btn" id="m-continue">▶️ Continue Autosave</button>` : '');
+
+    openModal(gameState ? '☰ Game Menu' : '⚔️ Emoji Warlords', `
+      <button class="act-btn primary" id="m-new-game">⚔️ New Game</button>
+      ${continueBtn}
+      <div style="display:flex;gap:8px;">
+        <button class="act-btn" style="flex:1" id="m-save" ${!gameState ? 'disabled' : ''}>💾 Save Slot 1</button>
+        <button class="act-btn" style="flex:1" id="m-load">📂 Load Slot 1</button>
+      </div>
+      <button class="act-btn" id="m-tests">🧪 Run Unit Tests</button>
+    `);
+
+    document.getElementById('m-new-game').onclick = showNewGameModal;
+    const contEl = document.getElementById('m-continue');
+    if (contEl) {
+      contEl.onclick = () => {
+        if (!gameState) {
+          const loaded = StorageSystem.load('autosave');
+          if (loaded) {
+            gameState = loaded;
+            selectedUnitId = null; selectedTile = null; reachableCache = null;
+            const startTown = gameState.towns.find(t => t.owner === gameState.humanFaction);
+            if (startTown) centerCameraOn(startTown.x, startTown.y);
+            closeModal(); updateHUD(); render(); showToast('Resumed autosave');
+          }
+        } else {
+          closeModal();
+        }
+      };
+    }
+    document.getElementById('m-save').onclick = () => {
+      if (!gameState) return;
+      StorageSystem.save(gameState, 'save_1'); showToast('Saved to Slot 1'); closeModal();
+    };
     document.getElementById('m-load').onclick = () => {
       const loaded = StorageSystem.load('save_1');
-      if (loaded) { gameState = loaded; selectedUnitId = null; reachableCache = null; closeModal(); updateHUD(); render(); showToast('Loaded Slot 1'); }
-      else showToast('No save in Slot 1');
+      if (loaded) {
+        gameState = loaded; selectedUnitId = null; selectedTile = null; reachableCache = null;
+        const startTown = gameState.towns.find(t => t.owner === gameState.humanFaction);
+        if (startTown) centerCameraOn(startTown.x, startTown.y);
+        closeModal(); updateHUD(); render(); showToast('Loaded Slot 1');
+      } else showToast('No save in Slot 1');
     };
     document.getElementById('m-tests').onclick = () => {
       const results = TestRunner.runAll(), passed = results.filter(r => r.pass).length;
@@ -1946,17 +1988,16 @@
     updateHUD(); render();
   };
 
-  const startTown = gameState.towns.find(t => t.owner === gameState.humanFaction);
   function bootRender() {
     if (window.innerHeight < 100) {
       document.getElementById('app').style.minHeight = '560px';
     }
     resizeCanvas();
-    if (startTown) centerCameraOn(startTown.x, startTown.y);
     updateHUD();
     render();
   }
   bootRender();
+  showMenuModal();
   if (typeof requestAnimationFrame === 'function') requestAnimationFrame(bootRender);
 })();
 </script>
