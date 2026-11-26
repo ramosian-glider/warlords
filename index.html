@@ -794,6 +794,10 @@
     },
     removeUnit(state, unit, killer, tile) {
       state.units = state.units.filter(u => u.id !== unit.id);
+      if (unit.bandId) {
+        const remaining = state.units.filter(u => u.bandId === unit.bandId);
+        if (remaining.length === 1) remaining[0].bandId = null;
+      }
       Hooks.emit('onUnitDeath', { unit, killer, tile });
     }
   };
@@ -872,6 +876,10 @@
           mine.sort((a, b) => (CONFIG.UNITS[b.type].upkeep - CONFIG.UNITS[a.type].upkeep) || (a.hp - b.hp));
           const victim = mine[0];
           state.units = state.units.filter(u => u.id !== victim.id);
+          if (victim.bandId) {
+            const remaining = state.units.filter(u => u.bandId === victim.bandId);
+            if (remaining.length === 1) remaining[0].bandId = null;
+          }
           upkeep -= CONFIG.UNITS[victim.type].upkeep || 0;
           disbanded++;
         }
