@@ -1562,13 +1562,15 @@
               const res = CombatSystem.resolveCombat(gameState, group, tx, ty);
               if (res) {
                 const capturedTown = (res.captured && !gameState.winner) ? getTownAt(gameState, tx, ty) : null;
-                const onAfterBattle = (capturedTown && capturedTown.owner === gameState.humanFaction)
-                  ? () => showTownModal(capturedTown)
-                  : null;
-                showBattleModal(res.log, onAfterBattle);
+                const onAfterBattle = gameState.winner
+                  ? () => showVictoryModal()
+                  : (capturedTown && capturedTown.owner === gameState.humanFaction)
+                    ? () => showTownModal(capturedTown)
+                    : null;
+                const btnLabel = gameState.winner ? 'Continue' : (onAfterBattle ? 'Manage Town' : 'Close');
+                showBattleModal(res.log, onAfterBattle, btnLabel);
                 if (res.survivingAttackers.length === 0) selectedUnitId = null;
                 reachableCache = null;
-                if (gameState.winner) showVictoryModal();
                 updateHUD(); render(); return;
               }
             }
@@ -1740,8 +1742,9 @@
     });
   }
 
-  function showBattleModal(log, onClose = null) {
-    openModal('⚔️ Battle Report', `<div class="battle-log">${log.join('<br>')}</div>`, `<button class="btn-sm" id="battle-ok">${onClose ? 'Manage Town' : 'Close'}</button>`);
+  function showBattleModal(log, onClose = null, btnLabel = null) {
+    const label = btnLabel || (onClose ? 'Manage Town' : 'Close');
+    openModal('⚔️ Battle Report', `<div class="battle-log">${log.join('<br>')}</div>`, `<button class="btn-sm" id="battle-ok">${label}</button>`);
     document.getElementById('battle-ok').onclick = () => {
       closeModal();
       if (onClose) onClose();
