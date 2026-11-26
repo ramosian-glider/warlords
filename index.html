@@ -540,6 +540,9 @@
         units.push(createUnit(t1, fId, town.x, town.y));
         units.push(createUnit(t2, fId, town.x, town.y));
       });
+      towns.forEach(town => {
+        if (town.owner === null) units.push(createUnit('NEU_MILITIA', 'NEUTRAL', town.x, town.y));
+      });
 
       if (towns.length > 1) {
         const visited = new Set([`${towns[0].x},${towns[0].y}`]);
@@ -706,12 +709,7 @@
     resolveCombat(state, attackerGroup, defX, defY) {
       const defenderTile = getTile(state, defX, defY);
       const town = getTownAt(state, defX, defY);
-      let defenders = getUnitsAt(state, defX, defY);
-      if (town && town.owner === null && defenders.length === 0) {
-        const militia = createUnit('NEU_MILITIA', 'NEUTRAL', defX, defY);
-        state.units.push(militia);
-        defenders = [militia];
-      }
+      const defenders = getUnitsAt(state, defX, defY);
       if (defenders.length === 0 && !town) return null;
       for (const u of attackerGroup) u.mp = Math.max(0, u.mp - Math.min(2, u.mp));
 
@@ -1062,7 +1060,8 @@
         ['test_ai_turn_execution', this.test_ai_turn_execution],
         ['test_difficulty_levels', this.test_difficulty_levels],
         ['test_town_blueprints_and_queued_switch', this.test_town_blueprints_and_queued_switch],
-        ['test_upkeep_and_bankruptcy', this.test_upkeep_and_bankruptcy]
+        ['test_upkeep_and_bankruptcy', this.test_upkeep_and_bankruptcy],
+        ['test_neutral_militia_no_respawn', this.test_neutral_militia_no_respawn]
       ];
       return tests.map(([name, fn]) => {
         try { fn(); return { name, pass: true, error: null }; }
@@ -1232,6 +1231,18 @@
       const res = EconomySystem.processTurnStart(s, 'EMPIRE');
       TestRunner.assert(res.disbanded === 1 && s.units.length === 6, 'Bankruptcy disbands excess units until upkeep <= income');
       TestRunner.assert(s.factions.EMPIRE.gold === 0, 'Treasury floors at 0 on bankruptcy');
+    },
+    test_neutral_militia_no_respawn() {
+      const s = MapGen.generate('EMPIRE', 12);
+      const neuTown = s.towns.find(t => t.owner === null);
+      const militia = getUnitsAt(s, neuTown.x, neuTown.y);
+      TestRunner.assert(militia.length === 1 && militia[0].type === 'NEU_MILITIA', 'Neutral town spawns 1 militia at map gen');
+      // Simulate mutual kill: militia is gone, town still neutral
+      s.units = s.units.filter(u => u.id !== militia[0].id);
+      const scout = createUnit('EMP_SCOUT', 'EMPIRE', neuTown.x + 1, neuTown.y);
+      s.units.push(scout);
+      const res = CombatSystem.resolveCombat(s, [scout], neuTown.x, neuTown.y);
+      TestRunner.assert(res.captured && neuTown.owner === 'EMPIRE' && scout.hp === CONFIG.UNITS.EMP_SCOUT.maxHp, 'Undefended neutral town is captured without respawning militia');
     }
   };
 
