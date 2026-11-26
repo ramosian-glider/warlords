@@ -1903,12 +1903,77 @@
         magicProgress = 0;
         const tBtn = document.getElementById('m-tests');
         if (tBtn) tBtn.style.display = '';
-        showToast('Unit tests unlocked');
+        const sBtn = document.getElementById('m-sim');
+        if (sBtn) sBtn.style.display = '';
+        showToast('Developer tools unlocked');
       }
     } else {
       magicProgress = corner === magicSeq[0] ? 1 : 0;
     }
   });
+
+  async function showSimModal() {
+    const gamesPerDiff = 15, maxTurns = 60;
+    const diffs = ['easy', 'normal', 'hard'];
+    const totalGames = gamesPerDiff * diffs.length;
+    const order = ['EMPIRE', 'SYLVAN', 'UNDEAD'];
+    const tier3Ids = new Set(Object.values(CONFIG.UNITS).filter(u => u.cost >= 300).map(u => u.id));
+    let cancelled = false;
+
+    openModal('Balance Simulation',
+      `<div id="sim-status" style="font-size:13px;color:var(--muted);text-align:center;padding:12px 0;">Running 0/${totalGames} games...</div><div id="sim-results"></div>`,
+      `<button class="btn-sm sec" id="sim-back">Back</button>`);
+    document.getElementById('sim-back').onclick = () => { cancelled = true; showMenuModal(); };
+
+    let done = 0;
+    const cards = [];
+    for (const dId of diffs) {
+      const wins = { EMPIRE: 0, SYLVAN: 0, UNDEAD: 0, TIMEOUT: 0 };
+      let turnsSum = 0, finished = 0, peakSum = 0, disbands = 0, t3Games = 0;
+      for (let g = 0; g < gamesPerDiff; g++) {
+        if (cancelled) return;
+        const s = MapGen.generate('EMPIRE', 3000 + g * 37 + done * 13, dId);
+        let peak = 0, hadT3 = false;
+        for (let t = 1; t <= maxTurns && !s.winner; t++) {
+          s.turn = t;
+          for (let i = 0; i < 3; i++) {
+            const fId = order[(g + i) % 3];
+            if (!s.factions[fId].alive || s.winner) continue;
+            const res = EconomySystem.processTurnStart(s, fId);
+            disbands += res.disbanded;
+            await AIController.runTurn(s, fId, 0);
+            const cnt = s.units.filter(u => u.owner === fId).length;
+            if (cnt > peak) peak = cnt;
+            if (s.towns.some(tw => (tw.unlockedUnits || []).some(id => tier3Ids.has(id)))) hadT3 = true;
+          }
+        }
+        if (s.winner) { wins[s.winner]++; turnsSum += s.turn; finished++; }
+        else wins.TIMEOUT++;
+        peakSum += peak;
+        if (hadT3) t3Games++;
+        done++;
+        if (done % 3 === 0 || done === totalGames) {
+          const st = document.getElementById('sim-status');
+          if (st) st.textContent = done < totalGames ? `Running ${done}/${totalGames} games...` : `Completed ${totalGames} games (${gamesPerDiff}/difficulty)`;
+          await new Promise(r => setTimeout(r, 0));
+        }
+      }
+      const d = CONFIG.DIFFICULTIES[dId];
+      cards.push(`
+        <div class="list-card" style="flex-direction:column;align-items:stretch;gap:6px;">
+          <div style="display:flex;justify-content:space-between;font-weight:700;font-size:13px;">
+            <span>${d.emoji} ${d.label} (${gamesPerDiff} games)</span>
+            <span style="color:var(--muted)">Avg ${finished ? (turnsSum / finished).toFixed(1) : '-'}t</span>
+          </div>
+          <div style="font-size:12px;display:flex;justify-content:space-between;">
+            <span>👑 ${wins.EMPIRE}</span><span>🌿 ${wins.SYLVAN}</span><span>☠️ ${wins.UNDEAD}</span><span>⏱️ ${wins.TIMEOUT}</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);">Peak units: ${(peakSum / gamesPerDiff).toFixed(1)} • Tier 3+: ${t3Games}/${gamesPerDiff} • Disbands: ${(disbands / gamesPerDiff).toFixed(1)}</div>
+        </div>`);
+      const resEl = document.getElementById('sim-results');
+      if (resEl) resEl.innerHTML = cards.join('');
+    }
+  }
 
   function showMenuModal() {
     const hasAutosave = !gameState && !!StorageSystem.load('autosave');
@@ -1926,6 +1991,7 @@
       <button class="act-btn" id="m-save" ${!gameState ? 'disabled' : ''}>Save Slot 1</button>
       <button class="act-btn" id="m-load">Load Slot 1</button>
       <button class="act-btn" id="m-tests" style="${devTestsUnlocked ? '' : 'display:none'}">Run Unit Tests</button>
+      <button class="act-btn" id="m-sim" style="${devTestsUnlocked ? '' : 'display:none'}">Run Balance Simulation</button>
     `, '', true);
 
     document.getElementById('m-new-game').onclick = showNewGameModal;
@@ -1965,6 +2031,7 @@
       openModal(`Unit Tests (${passed}/${results.length})`, html, `<button class="btn-sm sec" id="t-back">Back</button>`);
       document.getElementById('t-back').onclick = showMenuModal;
     };
+    document.getElementById('m-sim').onclick = showSimModal;
   }
 
   document.getElementById('menu-btn').onclick = showMenuModal;

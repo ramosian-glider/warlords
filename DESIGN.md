@@ -193,7 +193,7 @@ Designed for one-handed portrait play (`100dvh` viewport, no page bounce):
 4. **Main / Pause Menu Modal (`☰`, shown automatically on startup):**
    * Centered hero header (`⚔️` icon above **Emoji Warlords** title) and a single column of emoji-free buttons: `New Game`, `Resume Game` / `Continue Autosave`, `Save Slot 1`, `Load Slot 1`.
    * `New Game` opens a dedicated **New Game Setup Modal** with a 3-card radio-button faction picker, an Easy / Normal / Hard difficulty slider with live description, `Start Game`, and `Back`.
-   * `Run Unit Tests` is hidden by default and unlocked via a 4-corner tap gesture on the main menu (`bottom-left → top-left → top-right → bottom-right`).
+   * `Run Unit Tests` and `Run Balance Simulation` are hidden by default and unlocked via a 4-corner tap gesture on the main menu (`bottom-left → top-left → top-right → bottom-right`).
 
 ---
 
