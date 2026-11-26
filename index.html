@@ -1833,7 +1833,10 @@
     }).join('');
     const initDiff = CONFIG.DIFFICULTIES[diffOrder[curDiffIdx]];
 
-    openModal('⚔️ New Game', `
+    openModal('', `
+      <div class="menu-hero" style="padding:0 0 2px;">
+        <div class="menu-hero-title" style="font-size:20px;">New Game</div>
+      </div>
       <div class="new-game-box">
         <div class="field-label">Choose Faction</div>
         <div class="faction-grid" id="faction-picker">${factionCardsHtml}</div>
@@ -1848,7 +1851,7 @@
         </div>
         <button class="act-btn primary" id="m-new-start">Start Game</button>
       </div>
-    `, `<button class="btn-sm sec" id="ng-back">Back</button>`);
+    `, `<button class="btn-sm sec" id="ng-back">Back</button>`, true);
 
     const picker = document.getElementById('faction-picker');
     picker.querySelectorAll('input[name="new-faction"]').forEach(radio => {
