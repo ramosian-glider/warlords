@@ -1419,7 +1419,7 @@
       btnBand.textContent = selUnit.bandId ? '🔓 Disband' : '🔗 Band';
       btnWait.disabled = false;
     } else if (selectedTile) {
-      const unitsHere = getUnitsAt(gameState, selectedTile.x, selectedTile.y);
+      const unitsHere = getUnitsAt(gameState, selectedTile.x, selectedTile.y).filter(u => u.type !== 'NEU_MILITIA' || u.revealed);
       const town = getTownAt(gameState, selectedTile.x, selectedTile.y);
       if (unitsHere.length > 0) {
         const top = unitsHere[0], def = CONFIG.UNITS[top.type], lvl = getUnitLevelInfo(top);
@@ -1449,7 +1449,7 @@
     stackStrip.innerHTML = '';
     if (selectedTile) {
       const friendlyOnTile = getUnitsAt(gameState, selectedTile.x, selectedTile.y).filter(u => u.owner === fId);
-      const otherOnTile = getUnitsAt(gameState, selectedTile.x, selectedTile.y).filter(u => u.owner !== fId);
+      const otherOnTile = getUnitsAt(gameState, selectedTile.x, selectedTile.y).filter(u => u.owner !== fId && (u.type !== 'NEU_MILITIA' || u.revealed));
       const townOnTile = getTownAt(gameState, selectedTile.x, selectedTile.y);
 
       if (friendlyOnTile.length > 1 || (friendlyOnTile.length >= 1 && townOnTile && townOnTile.owner === fId)) {
