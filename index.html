@@ -1723,7 +1723,7 @@
           const msg = (wasProducing && town.nextProdUnit === unitId)
             ? `Queued ${name} after current unit`
             : `Producing ${name}`;
-          showToast(msg); closeModal(); updateHUD();
+          showToast(msg); showTownModal(town); updateHUD();
         }
       };
     });
