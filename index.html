@@ -212,6 +212,14 @@
     background: rgba(245, 158, 11, 0.16); color: var(--accent);
     border: 1px solid rgba(245, 158, 11, 0.4); white-space: nowrap;
   }
+  .menu-hero {
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    padding: 8px 0 6px; gap: 6px;
+  }
+  .menu-hero-icon { font-size: 46px; line-height: 1; }
+  .menu-hero-title { font-size: 24px; font-weight: 800; letter-spacing: 0.02em; color: var(--text); }
+  .modal.menu-mode .modal-header { border-bottom: none; padding-bottom: 0; justify-content: flex-end; }
+  .modal.menu-mode #modal-title { display: none; }
 </style>
 </head>
 <body>
@@ -1688,8 +1696,9 @@
   const modalBody = document.getElementById('modal-body');
   const modalFooter = document.getElementById('modal-footer');
 
-  function openModal(title, bodyHtml, footerHtml = '') {
+  function openModal(title, bodyHtml, footerHtml = '', menuMode = false) {
     modalTitle.textContent = title; modalBody.innerHTML = bodyHtml; modalFooter.innerHTML = footerHtml;
+    modalBackdrop.querySelector('.modal').classList.toggle('menu-mode', menuMode);
     document.getElementById('modal-close').style.visibility = gameState ? 'visible' : 'hidden';
     modalBackdrop.classList.add('open');
   }
@@ -1837,7 +1846,7 @@
           <div class="diff-ticks"><span>Easy</span><span>Normal</span><span>Hard</span></div>
           <div class="diff-desc" id="diff-desc">${initDiff.desc}</div>
         </div>
-        <button class="act-btn primary" id="m-new-start">⚔️ Start Game</button>
+        <button class="act-btn primary" id="m-new-start">Start Game</button>
       </div>
     `, `<button class="btn-sm sec" id="ng-back">Back</button>`);
 
@@ -1873,21 +1882,51 @@
     };
   }
 
+  let devTestsUnlocked = false;
+  const magicSeq = ['BL', 'TL', 'TR', 'BR'];
+  let magicProgress = 0;
+  modalBackdrop.addEventListener('pointerdown', (e) => {
+    if (devTestsUnlocked || !modalBackdrop.classList.contains('open')) return;
+    if (!modalBackdrop.querySelector('.modal').classList.contains('menu-mode')) return;
+    const nx = e.clientX / window.innerWidth;
+    const ny = e.clientY / window.innerHeight;
+    let corner = null;
+    if (nx < 0.25 && ny > 0.75) corner = 'BL';
+    else if (nx < 0.25 && ny < 0.25) corner = 'TL';
+    else if (nx > 0.75 && ny < 0.25) corner = 'TR';
+    else if (nx > 0.75 && ny > 0.75) corner = 'BR';
+    if (!corner) { magicProgress = 0; return; }
+    if (corner === magicSeq[magicProgress]) {
+      magicProgress++;
+      if (magicProgress === magicSeq.length) {
+        devTestsUnlocked = true;
+        magicProgress = 0;
+        const tBtn = document.getElementById('m-tests');
+        if (tBtn) tBtn.style.display = '';
+        showToast('Unit tests unlocked');
+      }
+    } else {
+      magicProgress = corner === magicSeq[0] ? 1 : 0;
+    }
+  });
+
   function showMenuModal() {
     const hasAutosave = !gameState && !!StorageSystem.load('autosave');
     const continueBtn = gameState
-      ? `<button class="act-btn" id="m-continue">▶️ Resume Game</button>`
-      : (hasAutosave ? `<button class="act-btn" id="m-continue">▶️ Continue Autosave</button>` : '');
+      ? `<button class="act-btn" id="m-continue">Resume Game</button>`
+      : (hasAutosave ? `<button class="act-btn" id="m-continue">Continue Autosave</button>` : '');
 
-    openModal(gameState ? '☰ Game Menu' : '⚔️ Emoji Warlords', `
-      <button class="act-btn primary" id="m-new-game">⚔️ New Game</button>
-      ${continueBtn}
-      <div style="display:flex;gap:8px;">
-        <button class="act-btn" style="flex:1" id="m-save" ${!gameState ? 'disabled' : ''}>💾 Save Slot 1</button>
-        <button class="act-btn" style="flex:1" id="m-load">📂 Load Slot 1</button>
+    openModal('', `
+      <div class="menu-hero">
+        <div class="menu-hero-icon">⚔️</div>
+        <div class="menu-hero-title">Emoji Warlords</div>
       </div>
-      <button class="act-btn" id="m-tests">🧪 Run Unit Tests</button>
-    `);
+      <button class="act-btn primary" id="m-new-game">New Game</button>
+      ${continueBtn}
+      <button class="act-btn" id="m-save" ${!gameState ? 'disabled' : ''}>Save Slot 1</button>
+      <button class="act-btn" id="m-load">Load Slot 1</button>
+      <button class="act-btn" id="m-tests" style="${devTestsUnlocked ? '' : 'display:none'}">Run Unit Tests</button>
+    `, '', true);
 
     document.getElementById('m-new-game').onclick = showNewGameModal;
     const contEl = document.getElementById('m-continue');
@@ -1923,7 +1962,7 @@
     document.getElementById('m-tests').onclick = () => {
       const results = TestRunner.runAll(), passed = results.filter(r => r.pass).length;
       const html = results.map(r => `<div class="list-card"><span style="font-size:12px;font-family:monospace">${r.name}</span><span class="${r.pass ? 'test-pass' : 'test-fail'}">${r.pass ? 'PASS' : 'FAIL'}</span></div>`).join('');
-      openModal(`🧪 Unit Tests (${passed}/${results.length})`, html, `<button class="btn-sm sec" id="t-back">Back</button>`);
+      openModal(`Unit Tests (${passed}/${results.length})`, html, `<button class="btn-sm sec" id="t-back">Back</button>`);
       document.getElementById('t-back').onclick = showMenuModal;
     };
   }
