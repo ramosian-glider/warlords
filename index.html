@@ -1775,12 +1775,18 @@
 
   function showEliminatedModal(factionId, onClose = null) {
     const f = CONFIG.FACTIONS[factionId];
-    openModal('💀 Faction Eliminated',
+    const isHuman = factionId === gameState.humanFaction;
+    const footer = isHuman
+      ? `<button class="btn-sm sec" id="elim-new">New Game</button><button class="btn-sm" id="elim-ok">Watch AI</button>`
+      : `<button class="btn-sm" id="elim-ok">${onClose ? 'Continue' : 'Close'}</button>`;
+    openModal(isHuman ? '💀 You Were Eliminated' : '💀 Faction Eliminated',
       `<div style="text-align:center;font-size:16px;padding:12px 0;">
         <div style="font-size:44px;">${f.emoji}</div>
         <p><strong>${f.name}</strong> has lost its last town and been wiped out!</p>
       </div>`,
-      `<button class="btn-sm" id="elim-ok">${onClose ? 'Continue' : 'Close'}</button>`);
+      footer);
+    const newBtn = document.getElementById('elim-new');
+    if (newBtn) newBtn.onclick = () => showMenuModal();
     document.getElementById('elim-ok').onclick = () => {
       closeModal();
       if (onClose) onClose();
@@ -1912,21 +1918,65 @@
     updateHUD(); render();
   };
 
+  async function runSpectatorTurns() {
+    const runState = gameState;
+    const btnEnd = document.getElementById('btn-end');
+    btnEnd.disabled = true;
+    btnEnd.textContent = 'Spectating...';
+    selectedUnitId = null; reachableCache = null;
+    updateHUD(); render();
+    while (!runState.winner && gameState === runState) {
+      runState.turn++;
+      for (const fId of ['EMPIRE', 'SYLVAN', 'UNDEAD']) {
+        if (gameState !== runState) break;
+        if (!runState.factions[fId].alive || runState.winner) continue;
+        showToast(`${CONFIG.FACTIONS[fId].emoji} ${CONFIG.FACTIONS[fId].name} turn`);
+        EconomySystem.processTurnStart(runState, fId);
+        await AIController.runTurn(runState, fId, 160, () => {
+          if (gameState === runState) { updateHUD(); render(); }
+        });
+        if (runState.winner) break;
+      }
+    }
+    btnEnd.disabled = false;
+    btnEnd.textContent = 'End Turn';
+    if (gameState === runState && runState.winner) {
+      pendingEliminations.length = 0;
+      showVictoryModal();
+    }
+    updateHUD(); render();
+  }
+
   document.getElementById('btn-end').onclick = async () => {
     if (gameState.winner) return;
+    if (!gameState.factions[gameState.humanFaction].alive) {
+      runSpectatorTurns();
+      return;
+    }
+    const runState = gameState;
     const btnEnd = document.getElementById('btn-end');
     btnEnd.disabled = true;
     btnEnd.textContent = 'AI Turn...';
     selectedUnitId = null; reachableCache = null;
     updateHUD(); render();
     for (const fId of ['EMPIRE', 'SYLVAN', 'UNDEAD']) {
+      if (gameState !== runState) return;
       if (fId === gameState.humanFaction || !gameState.factions[fId].alive) continue;
       showToast(`${CONFIG.FACTIONS[fId].emoji} ${CONFIG.FACTIONS[fId].name} turn`);
       EconomySystem.processTurnStart(gameState, fId);
       await AIController.runTurn(gameState, fId, 240, () => { updateHUD(); render(); });
       if (gameState.winner) break;
     }
+    if (gameState !== runState) return;
     if (!gameState.winner) {
+      if (!gameState.factions[gameState.humanFaction].alive) {
+        pendingEliminations.length = 0;
+        btnEnd.disabled = true;
+        btnEnd.textContent = 'Eliminated';
+        updateHUD(); render();
+        showEliminatedModal(gameState.humanFaction, () => runSpectatorTurns());
+        return;
+      }
       gameState.turn++;
       const turnRes = EconomySystem.processTurnStart(gameState, gameState.humanFaction);
       if (turnRes && turnRes.disbanded > 0) {
