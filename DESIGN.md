@@ -85,7 +85,7 @@ Units gain XP for surviving combat (`+10 XP` per battle participated, `+15 XP` b
 * **Generation Pipeline:**
   1. Seeded 2D value/simplex noise generates elevation (`MOUNTAINS` > `0.75`, `PLAINS`/`WOODS` middle, `SNOW` at extreme north/south latitudes or high elevation).
   2. **Town Placement:** Places `12–16` towns across valid non-mountain tiles with a minimum Manhattan/Euclidean distance constraint (`minDist = 4`) so towns are evenly distributed.
-  3. **Starting Positions:** Selects 3 maximally separated towns (farthest-point sampling) for the 3 factions. Each starting town begins with `1` Tier-1 Scout and `1` Tier-2 Core Infantry unit, and starts with Tier-2 Core Infantry already installed in its production queue.
+  3. **Starting Positions:** Selects 3 maximally separated towns (farthest-point sampling) and shuffles faction assignment using the seeded RNG. Each starting town begins with `1` Tier-1 Scout and `1` Tier-2 Core Infantry unit, with Tier-2 Core Infantry unlocked and active in its production queue. All remaining neutral towns spawn `1` hidden `NEU_MILITIA` unit.
   4. **Connectivity Guarantee:** Runs a flood-fill/A* check from each starting town to ensure no town is isolated by impassable terrain.
 
 ### 3.2 Movement, Bands & Stacking (`MovementSystem`)
@@ -93,7 +93,7 @@ Units gain XP for surviving combat (`+10 XP` per battle participated, `+15 XP` b
 * **Banding & Disbanding:**
   * Each unit has an individual `bandId` (or `null` if ungrouped).
   * **Band Action:** Groups selected friendly units on the same tile into a shared `bandId`. When a band moves, it moves together at the **lowest remaining MP** among its members, paying the **highest terrain MP cost** required by any member on each step.
-  * **Disband Action:** Clears `bandId` for selected units (or splits a subset out), allowing individual units with remaining MP to move independently.
+  * **Disband Action:** Clears `bandId` for selected units (or splits a subset out), allowing individual units with remaining MP to move independently. If combat or bankruptcy reduces a band to `1` surviving unit, its `bandId` is automatically cleared so it becomes a singleton.
 * **Pathfinding & Next-Unit Cycling:**
   * Tapping a unit/band computes reachable tiles via Dijkstra's algorithm and highlights valid destination tiles.
   * Tapping a reachable tile moves the unit/band step-by-step along the shortest path.
@@ -101,7 +101,7 @@ Units gain XP for surviving combat (`+10 XP` per battle participated, `+15 XP` b
 
 ### 3.3 Combat Resolution (`CombatSystem`)
 * **Initiation:** Long-pressing an adjacent or reachable hostile unit/band or enemy/neutral town automatically moves to the best adjacent tile (if needed) and initiates combat if the attacker has `mp >= 1` (attacking costs `2 MP` or all remaining MP if `< 2`).
-* **Town Defense Rule:** Neutral towns automatically spawn `1` neutral militia unit (`NEU_MILITIA`) at map generation so capturing towns always involves tactical combat. Towns themselves do not have HP.
+* **Town Defense Rule:** Neutral towns spawn `1` neutral militia unit (`NEU_MILITIA`) at map generation, hidden on the map and bottom HUD until the town is first attacked (`revealed = true`). If both the attacker and militia die in a mutual kill, the militia does not respawn and the town remains undefended. Towns themselves do not have HP.
 * **Turn-Based Dice Simulation:**
   1. **Combatants Lineup:** Attacker stack (`A[]`) and Defender stack (`D[]`) are ordered by unit role (frontline infantry/cavalry first, heroes/flyers/ranged behind).
   2. **Initiative & Simultaneous Exchange:** Emit `onCombatInit` hook. If Defender is inside a `TOWN` tile, Defender gets **First Strike on Round 1 only** (attacker counter-strikes if it survives). All open-field rounds and Round 2+ in Towns resolve **simultaneously**.
@@ -123,8 +123,8 @@ Units gain XP for surviving combat (`+10 XP` per battle participated, `+15 XP` b
 * **Buying & Switching Production:**
   * The player opens a town's management sheet, views the faction's 5 available unit blueprints, and pays a **one-time Unlock Cost** (`unit.cost` in Gold) to permanently unlock that blueprint for that town (`town.unlockedUnits`).
   * Once unlocked, switching between any unlocked blueprints in that town is **free**. If a town is captured and later recaptured, the faction's unlocked blueprints in that town are preserved (only the active queue resets on capture).
-  * **Queued Switching:** If the town is idle, production starts immediately. If the town is already mid-production, switching queues the new blueprint (`nextProdUnit`) so the current unit finishes and spawns first before switching automatically.
-  * Once active, the town automatically produces `1` unit of that type every `unit.buildTurns` turns indefinitely (until the player switches to another blueprint).
+  * **Immediate vs. Queued Switching:** If the town is idle or no turns have been invested in the current unit (`turnsRemaining >= unit.buildTurns`, including all 1-turn units), switching takes effect immediately. If a multi-turn unit is already partway done, switching queues the new blueprint (`nextProdUnit`) so the current unit finishes and spawns first before switching automatically.
+  * Once active, the town automatically produces `1` unit of that type every `unit.buildTurns` turns indefinitely (until the player switches to another blueprint or pauses production).
   * **Spawn Placement & Overflow:**
     * If the town tile has `< 6` units (`MAX_STACK`), the produced unit spawns directly on the town tile and `turnsRemaining` resets to `unit.buildTurns`.
     * **Overflow:** If the town tile is full (`6` units), the engine scans the 8 adjacent tiles (top-left to bottom-right) and spawns the unit on the first in-bounds tile that is not `MOUNTAINS`, contains no hostile/neutral units, and has `< 6` friendly units.
@@ -132,8 +132,9 @@ Units gain XP for surviving combat (`+10 XP` per battle participated, `+15 XP` b
 
 ### 3.5 Victory & Elimination (`WinConditionSystem`)
 * Checked immediately after any town capture (`onTownCaptured` hook):
-  * If a faction reaches `0` owned towns, that faction is immediately eliminated: all of its remaining units on the map are destroyed (`onFactionEliminated` hook).
-  * If only `1` faction remains with towns, trigger the Victory / Defeat end-of-game screen.
+  * If a faction reaches `0` owned towns, that faction is immediately eliminated: all of its remaining units on the map are destroyed (`onFactionEliminated` hook), and a **Faction Eliminated** modal is shown.
+  * If the human faction is eliminated while 2 AI factions remain, the modal offers **New Game** or **Watch AI** (automatically running the remaining AI turns in spectator mode until a winner emerges).
+  * If only `1` faction remains with towns, trigger the Victory / Defeat modal (chained after the Battle Report when triggered by human combat).
 
 ---
 
@@ -162,14 +163,18 @@ const Hooks = {
 ---
 
 ## 5. AI Opponent Controller (`AIController`)
-Executed sequentially for the two PC factions during their turn with a `240ms` step delay and `200ms` unit glide animations so players can watch enemy movements and attacks:
-1. **Production Phase:** For each owned town with no production (or when sitting on excess gold > `450`), purchase the highest-tier affordable unit blueprint (weighted toward Flyers/Cavalry when towns are far apart, or Infantry when enemies are within 4 tiles).
-2. **Banding Phase:** Group co-located idle units into bands of `2–4` units before moving.
+Executed sequentially for the two PC factions during their turn with a `240ms` step delay (`160ms` in spectator mode) and `200ms` unit glide animations so players can watch enemy movements and attacks. Economy and unit rules are **100% symmetric** for all factions; difficulty (`CONFIG.DIFFICULTIES`) tunes AI behavior only:
+* **Easy:** Garrisons all owned towns, expands slowly (`40%` hold chance on non-adjacent moves), bands up to `2` units, buys new production at a `45%` pace, upgrades at `> 700g`.
+* **Normal:** Garrisons its capital, expands steadily (`15%` hold chance), bands up to `3` units, buys new production at an `80%` pace, upgrades at `> 500g`.
+* **Hard:** No garrison holdback, bands up to `4` units, buys production immediately (`100%`), upgrades at `> 420g`, and never skips moves.
+
+Turn steps:
+1. **Production & Upkeep Phase:** Pauses excess non-capital towns when net income `<= 2`. Otherwise, for idle towns (when net income `> 4`) or when sitting on excess gold (`> aiUpgradeGold`), unlocks or switches to the highest-tier affordable unit blueprint.
+2. **Banding Phase:** Group co-located idle units into bands of up to `aiMaxBand` units before moving.
 3. **Target Scoring & Movement:** Each unit/band evaluates visible/known targets using a utility score:
-   * Unprotected neutral or enemy towns within reach (`+100` priority).
-   * Weakened enemy bands (`+60` priority).
-   * Nearest uncaptured town (`+30` priority).
-   * Moves via A* toward the highest-scoring target and initiates combat if adjacent.
+   * Unprotected neutral or enemy towns within reach (`+80` / `+100` priority).
+   * Enemy bands (`+60` priority).
+   * Moves via reachable-tile scoring toward the highest-scoring target and initiates combat if adjacent.
 
 ---
 
@@ -177,18 +182,18 @@ Executed sequentially for the two PC factions during their turn with a `240ms` s
 Designed for one-handed portrait play (`100dvh` viewport, no page bounce):
 
 1. **Top Status Bar (48px):**
-   * Current Faction Badge & Color | Gold Balance (`💰 240 (+75/t)`) | Town Count (`🏰 3/14`) | Menu Button (`☰`).
+   * Current Faction Badge & Color | Gold Balance & Net Income (`💰 240 (+45)`, red when negative) | Town Count (`🏰 3/14`) | Turn (`T1`) | Menu Button (`☰`).
 2. **Interactive Canvas Map (Flexible Center):**
    * HTML5 `<canvas>` rendering crisp terrain colors, subtle grid lines, town icons (`🏰` tinted with owner faction badge), unit emojis, stack count badges (`×3`), HP bars, `200ms` smooth movement animations, and a high-contrast reachable-tile overlay (cyan border + dimmed unreachable tiles).
    * Supports single-finger pan, Google Maps-style pinch-to-zoom anchored to the finger midpoint, **short-tap** to select/inspect (friendly units, enemy stacks, towns), and **long-press (`~450ms`)** to move/stack or move-and-attack.
 3. **Bottom Contextual Action Drawer (132px+):**
    * **When Unit/Band/Tile Selected:** Displays unit emoji(s), HP, ATK/DEF, XP, remaining MP, a horizontally scrollable `#stack-strip` of clickable unit & `🏰` town chips (for both friendly and enemy/neutral tiles), and touch-friendly buttons: `[Band / Disband]`, `[Wait]`, `[Next Unit ⏭️]`, `[End Turn]`.
-   * **When Town Selected:** Displays town name, gold yield, current production progress (`🐉 2/5 turns`), and `[Buy Production]` button opening a clean modal list of faction units.
-   * **Battle Modal:** Compact animated dice-roll log showing each duel round, First Strike indicator (if Town defense), damage dealt, and XP gained, with `[Skip]` / `[Close]`.
-4. **Main / Pause Menu Modal (`☰`):**
-   * `[New Game (Pick Faction)]`
-   * `[Save Game]` / `[Load Game]` (uses `localStorage` with multiple slots + JSON export/import text fallback)
-   * `[Run Unit Tests 🧪]`
+   * **When Town Selected:** Displays town name, gold yield, current production progress (`🐉 2/5 turns`, with `→ <emoji>` when a switch is queued). Tapping opens the **Town Modal** with a top production status banner (`🔨 Building` + `⏸️ Pause`), unit cards showing stats + `g/t` upkeep, and `Select` / `💰 cost` controls (staying open and refreshing in place on selection).
+   * **Battle Modal:** Compact dice-roll log showing each duel round, First Strike indicator (if Town defense), damage dealt, and XP gained. Chains into **Manage Town** on town capture, **Faction Eliminated** when a faction loses its last town, or **Victory** on conquering the final enemy town.
+4. **Main / Pause Menu Modal (`☰`, shown automatically on startup):**
+   * Centered hero header (`⚔️` icon above **Emoji Warlords** title) and a single column of emoji-free buttons: `New Game`, `Resume Game` / `Continue Autosave`, `Save Slot 1`, `Load Slot 1`.
+   * `New Game` opens a dedicated **New Game Setup Modal** with a 3-card radio-button faction picker, an Easy / Normal / Hard difficulty slider with live description, `Start Game`, and `Back`.
+   * `Run Unit Tests` is hidden by default and unlocked via a 4-corner tap gesture on the main menu (`bottom-left → top-left → top-right → bottom-right`).
 
 ---
 
@@ -200,30 +205,35 @@ Designed for one-handed portrait play (`100dvh` viewport, no page bounce):
     "turn": 14,
     "activeFaction": "EMPIRE",
     "humanFaction": "EMPIRE",
+    "difficulty": "normal",
     "factions": { "EMPIRE": { "gold": 320, "alive": true }, ... },
     "map": { "width": 16, "height": 22, "tiles": [...] },
-    "towns": [ { "id": "t1", "x": 4, "y": 5, "owner": "EMPIRE", "prodUnit": "EMP_GUARD", "turnsLeft": 1 } ],
+    "towns": [ { "id": "t1", "x": 4, "y": 5, "owner": "EMPIRE", "prodUnit": "EMP_GUARD", "nextProdUnit": null, "turnsLeft": 1, "unlockedUnits": ["EMP_GUARD"] } ],
     "units": [ { "id": "u1", "type": "EMP_KNIGHT", "owner": "EMPIRE", "x": 4, "y": 6, "hp": 22, "mp": 12, "xp": 10, "bandId": "b1" } ]
   }
   ```
-* **Persistence:** Saves to `localStorage` under `emoji_warlords_save_1..3` plus an automatic `autosave` at the start of every human turn.
+* **Persistence:** Saves to `localStorage` under `emoji_warlords_save_1` plus an automatic `autosave` at the start of every human turn.
 
 ---
 
 ## 8. Embedded Unit Test Suite (`TestRunner`)
-Accessible directly from the in-game menu (`Run Unit Tests 🧪`), rendering a pass/fail diagnostic overlay inside the single HTML file without needing external test frameworks.
+Accessible from the main menu after unlocking with the 4-corner gesture (`BL → TL → TR → BR`), rendering a pass/fail diagnostic overlay inside the single HTML file without external test frameworks.
 
-### Required Test Cases:
-1. **`test_map_generation_connectivity`:** Generates a map, verifies 3 distinct starting towns, verifies minimum spacing between towns, and runs pathfinding to confirm all towns are reachable.
-2. **`test_terrain_movement_and_traits`:** Verifies base MP deduction across Plains/Woods/Mountains/Snow, and verifies trait hooks (`FLYING` flat cost, `WOODS_STRIDE` discount, `NO_MOUNTAIN` block).
-3. **`test_banding_and_disbanding`:** Places 3 units with different MPs (`8`, `12`, `16`) on one tile, bands them, verifies band MP equals `8` (minimum), moves 1 tile, disbands, and verifies remaining units retain their unspent individual MP.
-4. **`test_town_first_strike_combat`:** Places an attacker outside a town and a defender inside a town, hooks `onCombatRound`, and asserts the defender executes the first attack roll of the battle.
-5. **`test_xp_and_leveling`:** Simulates combat victory, verifies XP award, triggers level-up threshold, and asserts increased `ATK`/`DEF`/`MaxHP`.
-6. **`test_economy_and_production_loop`:** Sets town gold, buys a `2-turn` unit blueprint, advances 2 turns via `endTurn()`, and asserts gold deduction, turn income addition, and unit spawning on the town tile.
-7. **`test_faction_elimination_and_victory`:** Captures a faction's last remaining town and asserts that all surviving units belonging to that faction are immediately removed and victory triggers when 1 faction remains.
-8. **`test_save_load_roundtrip`:** Serializes a mid-game state to JSON, mutates the live state, reloads from JSON, and asserts deep equality of map, towns, units, bands, and gold.
-9. **`test_mixed_band_reachability_and_stack_cap`:** Verifies a `FLYING` + `NO_MOUNTAIN` band is blocked by Mountains and cannot enter a tile that would exceed `MAX_STACK` (`6`).
+### Test Cases (14):
+1. **`test_map_generation_connectivity`:** Generates a map, verifies 3 distinct starting towns, verifies minimum spacing between towns, and confirms all towns are reachable.
+2. **`test_terrain_movement_and_traits`:** Verifies base MP deduction across terrains and trait hooks (`FLYING`, `WOODS_STRIDE`, `NO_MOUNTAIN`).
+3. **`test_banding_and_disbanding`:** Bands 3 units with different MPs (`10`, `14`, `16`), verifies band MP equals `10`, moves 1 tile, disbands, and verifies unspent individual MP.
+4. **`test_town_first_strike_combat`:** Verifies town defender executes the first attack roll and every strike deals at least `1` damage.
+5. **`test_xp_and_leveling`:** Verifies XP award, Level 2 threshold at `25 XP`, and increased `MaxHP`.
+6. **`test_economy_and_production_loop`:** Buys a `2-turn` Paladin blueprint, advances 2 turns, and asserts gold deduction and Paladin spawning.
+7. **`test_faction_elimination_and_victory`:** Captures a faction's last town and asserts immediate unit removal and victory trigger.
+8. **`test_save_load_roundtrip`:** Serializes mid-game state to JSON, mutates live state, reloads, and asserts preserved gold and towns.
+9. **`test_mixed_band_reachability_and_stack_cap`:** Verifies a `FLYING` + `NO_MOUNTAIN` band is blocked by Mountains and cannot exceed `MAX_STACK` (`6`).
 10. **`test_ai_turn_execution`:** Verifies `AIController.runTurn` executes cleanly.
+11. **`test_difficulty_levels`:** Verifies symmetric starting gold/build turns across difficulties and Easy AI town garrisoning.
+12. **`test_town_blueprints_and_queued_switch`:** Verifies immediate switching from 1-turn units, free switching to unlocked blueprints, and queued switching for mid-production multi-turn units.
+13. **`test_upkeep_and_bankruptcy`:** Verifies `pauseProduction` and bankruptcy disbanding when upkeep exceeds income at `0` gold.
+14. **`test_neutral_militia_no_respawn`:** Verifies neutral towns spawn `1` `NEU_MILITIA` at map gen and do not respawn militia after a mutual kill.
 
 ---
 
