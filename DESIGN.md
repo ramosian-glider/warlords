@@ -81,7 +81,11 @@ Units gain XP for surviving combat (`+10 XP` per battle participated, `+15 XP` b
 ## 3. Game Mechanics & Rules Engine
 
 ### 3.1 Procedural Map Generation (`MapGen`)
-* **Grid Size:** Configurable (Default: `16 x 22` tiles, optimized for vertical mobile scrolling/panning).
+* **Map Sizes (`CONFIG.MAP_SIZES`):** Selectable in the New Game setup modal (`M` default):
+  * `S` (Small): `16 × 22`, `12–15` towns, `minDist = 4`
+  * `M` (Medium): `20 × 28`, `18–22` towns, `minDist = 5`
+  * `L` (Large): `26 × 36`, `26–32` towns, `minDist = 6`
+  * `XL` (Extra Large): `32 × 44`, `36–44` towns, `minDist = 7`
 * **Generation Pipeline:**
   1. Seeded 2D value/simplex noise generates elevation (`MOUNTAINS` > `0.75`, `PLAINS`/`WOODS` middle, `SNOW` at extreme north/south latitudes or high elevation).
   2. **Town Placement:** Places `12–16` towns across valid non-mountain tiles with a minimum Manhattan/Euclidean distance constraint (`minDist = 4`) so towns are evenly distributed.

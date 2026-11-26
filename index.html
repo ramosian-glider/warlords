@@ -177,6 +177,22 @@
     background: color-mix(in srgb, var(--fc-color, var(--accent)) 22%, var(--surface-2));
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--fc-color, var(--accent)) 45%, transparent);
   }
+  .size-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+  }
+  .size-pill {
+    position: relative; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 2px; padding: 8px 4px; border-radius: 10px;
+    background: var(--surface-2); border: 2px solid var(--border);
+    cursor: pointer; text-align: center; transition: border-color 0.15s, background 0.15s;
+  }
+  .size-pill input { position: absolute; opacity: 0; pointer-events: none; }
+  .size-pill .sp-code { font-size: 14px; font-weight: 800; color: var(--text); }
+  .size-pill .sp-dim { font-size: 10px; color: var(--muted); font-weight: 600; }
+  .size-pill.selected {
+    border-color: var(--accent);
+    background: rgba(245, 158, 11, 0.16);
+  }
   .diff-wrap { display: flex; flex-direction: column; gap: 6px; }
   .diff-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .diff-badge {
@@ -332,6 +348,12 @@
       easy:   { id: 'easy',   label: 'Easy',   emoji: '🌱', desc: 'Passive AI that garrisons towns and expands slowly',        aiMaxBand: 2, aiBuyChance: 0.45, aiUpgradeGold: 700, aiSkipChance: 0.40, aiGarrison: 'all' },
       normal: { id: 'normal', label: 'Normal', emoji: '⚔️', desc: 'Balanced AI that defends its capital and expands steadily', aiMaxBand: 3, aiBuyChance: 0.80, aiUpgradeGold: 500, aiSkipChance: 0.15, aiGarrison: 'capital' },
       hard:   { id: 'hard',   label: 'Hard',   emoji: '🔥', desc: 'Aggressive AI with full bands and relentless expansion',    aiMaxBand: 4, aiBuyChance: 1.0,  aiUpgradeGold: 420, aiSkipChance: 0,    aiGarrison: 'none' }
+    },
+    MAP_SIZES: {
+      S:  { id: 'S',  label: 'Small',       width: 16, height: 22, townMin: 12, townMax: 15, minTownDist: 4 },
+      M:  { id: 'M',  label: 'Medium',      width: 20, height: 28, townMin: 18, townMax: 22, minTownDist: 5 },
+      L:  { id: 'L',  label: 'Large',       width: 26, height: 36, townMin: 26, townMax: 32, minTownDist: 6 },
+      XL: { id: 'XL', label: 'Extra Large', width: 32, height: 44, townMin: 36, townMax: 44, minTownDist: 7 }
     }
   };
 
@@ -458,15 +480,22 @@
   const TOWN_NAMES = [
     'Oakenshield', 'Frostpeak', 'Silverkeep', 'Briarwood', 'Ravenrock',
     'Sunhaven', 'Ironforge', 'Mistvale', 'Shadowfen', 'Goldcrest',
-    'Starfall', 'Thornwatch', 'Highgard', 'Ashford', 'Deepwell', 'Cragmoor'
+    'Starfall', 'Thornwatch', 'Highgard', 'Ashford', 'Deepwell', 'Cragmoor',
+    'Redcliff', 'Pinecrest', 'Whitehaven', 'Stonebridge', 'Blackwater',
+    'Amberfield', 'Coldharbor', 'Dragonspire', 'Ebonhold', 'Fairhaven',
+    'Grimrock', 'Hawksmoor', 'Ivorytower', 'Jadecrest', 'Kingsford',
+    'Lionsgate', 'Moonhaven', 'Northwatch', 'Oakhaven', 'Riverbend',
+    'Timberfall', 'Valenwood', 'Westmarch', 'Windhelm', 'Winterhold',
+    'Wyrmwood', 'Stormgate', 'Greenhollow'
   ];
 
   const MapGen = {
-    generate(humanFaction = 'EMPIRE', seed = Date.now(), difficulty = 'normal') {
+    generate(humanFaction = 'EMPIRE', seed = Date.now(), difficulty = 'normal', mapSize = 'S') {
       const diff = CONFIG.DIFFICULTIES[difficulty] || CONFIG.DIFFICULTIES.normal;
+      const sizeCfg = CONFIG.MAP_SIZES[mapSize] || CONFIG.MAP_SIZES.S;
       const rng = mulberry32(seed);
-      const w = CONFIG.MAP_WIDTH;
-      const h = CONFIG.MAP_HEIGHT;
+      const w = sizeCfg.width;
+      const h = sizeCfg.height;
 
       const grid = Array.from({ length: h }, () => Array.from({ length: w }, () => rng()));
       const smooth = (x, y) => {
@@ -494,16 +523,16 @@
         }
       }
 
-      const targetTowns = CONFIG.TOWN_COUNT_MIN + Math.floor(rng() * (CONFIG.TOWN_COUNT_MAX - CONFIG.TOWN_COUNT_MIN + 1));
+      const targetTowns = sizeCfg.townMin + Math.floor(rng() * (sizeCfg.townMax - sizeCfg.townMin + 1));
       const towns = [];
       let attempts = 0;
-      while (towns.length < targetTowns && attempts < 1000) {
+      while (towns.length < targetTowns && attempts < 2500) {
         attempts++;
         const x = 1 + Math.floor(rng() * (w - 2));
         const y = 1 + Math.floor(rng() * (h - 2));
         const tile = tiles[y * w + x];
         if (tile.terrain === 'MOUNTAINS') continue;
-        if (towns.some(t => Math.abs(t.x - x) + Math.abs(t.y - y) < CONFIG.MIN_TOWN_DIST)) continue;
+        if (towns.some(t => Math.abs(t.x - x) + Math.abs(t.y - y) < sizeCfg.minTownDist)) continue;
         tile.hasTown = true;
         towns.push({
           id: genId('t'), name: TOWN_NAMES[towns.length % TOWN_NAMES.length],
@@ -584,7 +613,7 @@
       }
 
       return {
-        version: 1, turn: 1, activeFaction: humanFaction, humanFaction, difficulty: diff.id, winner: null,
+        version: 1, turn: 1, activeFaction: humanFaction, humanFaction, difficulty: diff.id, mapSize: sizeCfg.id, winner: null,
         factions: {
           EMPIRE: { gold: 150, alive: true },
           SYLVAN: { gold: 150, alive: true },
@@ -1078,7 +1107,8 @@
         ['test_difficulty_levels', this.test_difficulty_levels],
         ['test_town_blueprints_and_queued_switch', this.test_town_blueprints_and_queued_switch],
         ['test_upkeep_and_bankruptcy', this.test_upkeep_and_bankruptcy],
-        ['test_neutral_militia_no_respawn', this.test_neutral_militia_no_respawn]
+        ['test_neutral_militia_no_respawn', this.test_neutral_militia_no_respawn],
+        ['test_map_sizes', this.test_map_sizes]
       ];
       return tests.map(([name, fn]) => {
         try { fn(); return { name, pass: true, error: null }; }
@@ -1260,6 +1290,14 @@
       s.units.push(scout);
       const res = CombatSystem.resolveCombat(s, [scout], neuTown.x, neuTown.y);
       TestRunner.assert(res.captured && neuTown.owner === 'EMPIRE' && scout.hp === CONFIG.UNITS.EMP_SCOUT.maxHp, 'Undefended neutral town is captured without respawning militia');
+    },
+    test_map_sizes() {
+      for (const sId of ['S', 'M', 'L', 'XL']) {
+        const cfg = CONFIG.MAP_SIZES[sId];
+        const s = MapGen.generate('EMPIRE', 42, 'normal', sId);
+        TestRunner.assert(s.mapSize === sId && s.map.width === cfg.width && s.map.height === cfg.height, `Map ${sId} dimensions match`);
+        TestRunner.assert(s.towns.length >= 3, `Map ${sId} has at least 3 towns`);
+      }
     }
   };
 
@@ -1817,8 +1855,10 @@
 
   function showNewGameModal() {
     const diffOrder = ['easy', 'normal', 'hard'];
+    const sizeOrder = ['S', 'M', 'L', 'XL'];
     const curFaction = (gameState && gameState.humanFaction) || 'EMPIRE';
     const curDiff = (gameState && gameState.difficulty) || 'normal';
+    const curSize = (gameState && gameState.mapSize) || 'M';
     const curDiffIdx = Math.max(0, diffOrder.indexOf(curDiff));
     const factionCardsHtml = ['EMPIRE', 'SYLVAN', 'UNDEAD'].map(fId => {
       const f = CONFIG.FACTIONS[fId];
@@ -1831,6 +1871,16 @@
           <span class="fc-name">${shortName}</span>
         </label>`;
     }).join('');
+    const sizePillsHtml = sizeOrder.map(sId => {
+      const sz = CONFIG.MAP_SIZES[sId];
+      const checked = sId === curSize;
+      return `
+        <label class="size-pill${checked ? ' selected' : ''}" data-size="${sId}">
+          <input type="radio" name="new-size" value="${sId}" ${checked ? 'checked' : ''}>
+          <span class="sp-code">${sId}</span>
+          <span class="sp-dim">${sz.width}×${sz.height}</span>
+        </label>`;
+    }).join('');
     const initDiff = CONFIG.DIFFICULTIES[diffOrder[curDiffIdx]];
 
     openModal('', `
@@ -1840,6 +1890,8 @@
       <div class="new-game-box">
         <div class="field-label">Choose Faction</div>
         <div class="faction-grid" id="faction-picker">${factionCardsHtml}</div>
+        <div class="field-label">Map Size</div>
+        <div class="size-grid" id="size-picker">${sizePillsHtml}</div>
         <div class="diff-wrap">
           <div class="diff-header">
             <span class="field-label">Difficulty</span>
@@ -1862,6 +1914,15 @@
       };
     });
 
+    const sizePicker = document.getElementById('size-picker');
+    sizePicker.querySelectorAll('input[name="new-size"]').forEach(radio => {
+      radio.onchange = () => {
+        sizePicker.querySelectorAll('.size-pill').forEach(pill => {
+          pill.classList.toggle('selected', pill.dataset.size === radio.value);
+        });
+      };
+    });
+
     const slider = document.getElementById('diff-slider');
     const diffBadge = document.getElementById('diff-badge');
     const diffDesc = document.getElementById('diff-desc');
@@ -1874,14 +1935,15 @@
     document.getElementById('ng-back').onclick = showMenuModal;
     document.getElementById('m-new-start').onclick = () => {
       const f = picker.querySelector('input[name="new-faction"]:checked')?.value || 'EMPIRE';
+      const sId = sizePicker.querySelector('input[name="new-size"]:checked')?.value || 'M';
       const dId = diffOrder[Number(slider.value)] || 'normal';
-      gameState = MapGen.generate(f, Date.now(), dId);
+      gameState = MapGen.generate(f, Date.now(), dId, sId);
       StorageSystem.save(gameState, 'autosave');
       selectedUnitId = null; selectedTile = null; reachableCache = null;
       const startTown = gameState.towns.find(t => t.owner === f);
       if (startTown) centerCameraOn(startTown.x, startTown.y);
       closeModal(); updateHUD(); render();
-      showToast(`${CONFIG.FACTIONS[f].emoji} ${CONFIG.DIFFICULTIES[dId].label} game started`);
+      showToast(`${CONFIG.FACTIONS[f].emoji} ${CONFIG.DIFFICULTIES[dId].label} • ${sId} map`);
     };
   }
 
