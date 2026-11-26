@@ -1559,15 +1559,23 @@
               if (bestAdj) { MovementSystem.moveGroup(gameState, group, bestAdj.x, bestAdj.y); canAttack = true; }
             }
             if (canAttack) {
+              pendingEliminations.length = 0;
               const res = CombatSystem.resolveCombat(gameState, group, tx, ty);
               if (res) {
+                const eliminated = pendingEliminations.splice(0);
                 const capturedTown = (res.captured && !gameState.winner) ? getTownAt(gameState, tx, ty) : null;
-                const onAfterBattle = gameState.winner
-                  ? () => showVictoryModal()
-                  : (capturedTown && capturedTown.owner === gameState.humanFaction)
-                    ? () => showTownModal(capturedTown)
-                    : null;
-                const btnLabel = gameState.winner ? 'Continue' : (onAfterBattle ? 'Manage Town' : 'Close');
+                const openTown = (capturedTown && capturedTown.owner === gameState.humanFaction)
+                  ? () => showTownModal(capturedTown)
+                  : null;
+                let onAfterBattle = openTown;
+                let btnLabel = openTown ? 'Manage Town' : 'Close';
+                if (gameState.winner) {
+                  onAfterBattle = () => showVictoryModal();
+                  btnLabel = 'Continue';
+                } else if (eliminated.length > 0) {
+                  onAfterBattle = () => showEliminatedModal(eliminated[0], openTown);
+                  btnLabel = 'Continue';
+                }
                 showBattleModal(res.log, onAfterBattle, btnLabel);
                 if (res.survivingAttackers.length === 0) selectedUnitId = null;
                 reachableCache = null;
@@ -1751,6 +1759,25 @@
     };
   }
 
+  const pendingEliminations = [];
+  Hooks.on('onFactionEliminated', ({ factionId, state }) => {
+    if (state === gameState) pendingEliminations.push(factionId);
+  });
+
+  function showEliminatedModal(factionId, onClose = null) {
+    const f = CONFIG.FACTIONS[factionId];
+    openModal('💀 Faction Eliminated',
+      `<div style="text-align:center;font-size:16px;padding:12px 0;">
+        <div style="font-size:44px;">${f.emoji}</div>
+        <p><strong>${f.name}</strong> has lost its last town and been wiped out!</p>
+      </div>`,
+      `<button class="btn-sm" id="elim-ok">${onClose ? 'Continue' : 'Close'}</button>`);
+    document.getElementById('elim-ok').onclick = () => {
+      closeModal();
+      if (onClose) onClose();
+    };
+  }
+
   function showVictoryModal() {
     const w = CONFIG.FACTIONS[gameState.winner], won = gameState.winner === gameState.humanFaction;
     openModal(won ? '🏆 Victory!' : '💀 Defeat',
@@ -1897,7 +1924,14 @@
         showToast(`⚠️ Upkeep unpaid! Disbanded ${turnRes.disbanded} unit${turnRes.disbanded > 1 ? 's' : ''}`);
       }
       StorageSystem.save(gameState, 'autosave');
-    } else showVictoryModal();
+      if (pendingEliminations.length > 0) {
+        const eliminated = pendingEliminations.splice(0);
+        showEliminatedModal(eliminated[0]);
+      }
+    } else {
+      pendingEliminations.length = 0;
+      showVictoryModal();
+    }
     btnEnd.disabled = false;
     btnEnd.textContent = 'End Turn';
     updateHUD(); render();
