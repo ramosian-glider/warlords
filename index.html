@@ -1291,12 +1291,16 @@
   function resizeCanvas() {
     const rect = mapWrap.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.max(1, rect.width) * dpr;
-    canvas.height = Math.max(1, rect.height) * dpr;
+    canvas.width = Math.round(Math.max(1, rect.width) * dpr);
+    canvas.height = Math.round(Math.max(1, rect.height) * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     render();
   }
   window.addEventListener('resize', resizeCanvas);
+  window.addEventListener('pageshow', resizeCanvas);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) resizeCanvas();
+  });
 
   const animatingUnits = new Map();
   let animFrameId = null;
@@ -1315,6 +1319,14 @@
 
   function render() {
     const rect = mapWrap.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const targetW = Math.round(Math.max(1, rect.width) * dpr);
+    const targetH = Math.round(Math.max(1, rect.height) * dpr);
+    if (canvas.width !== targetW || canvas.height !== targetH) {
+      canvas.width = targetW;
+      canvas.height = targetH;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, rect.width, rect.height);
     if (!gameState) return;
     const ts = CONFIG.TILE_SIZE * camera.zoom;
