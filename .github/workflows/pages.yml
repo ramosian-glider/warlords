@@ -1,0 +1,74 @@
+name: GitHub Pages & PR Previews
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: gh-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Checkout gh-pages branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            git fetch origin gh-pages
+            git worktree add ../gh-pages origin/gh-pages
+            git -C ../gh-pages checkout -B gh-pages
+          else
+            git worktree add --orphan -b gh-pages ../gh-pages
+            touch ../gh-pages/.nojekyll
+          fi
+
+      - name: Update gh-pages content
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            cp index.html ../gh-pages/index.html
+          elif [ "${{ github.event.action }}" = "closed" ]; then
+            rm -rf "../gh-pages/pr-${{ github.event.pull_request.number }}"
+          else
+            mkdir -p "../gh-pages/pr-${{ github.event.pull_request.number }}"
+            cp index.html "../gh-pages/pr-${{ github.event.pull_request.number }}/index.html"
+          fi
+
+      - name: Commit and push gh-pages
+        run: |
+          cd ../gh-pages
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to publish"
+          else
+            git commit -m "Deploy ${{ github.event_name }} (${{ github.event.pull_request.number || 'main' }})"
+            git push origin gh-pages
+          fi
+
+      - name: Comment PR preview URL
+        if: github.event_name == 'pull_request' && github.event.action != 'closed'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUM="${{ github.event.pull_request.number }}"
+          URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/pr-${PR_NUM}/"
+          BODY="🚀 **Live Preview:** ${URL}
+
+          _(Updates automatically on every push to this PR; cleaned up when merged/closed.)_"
+          EXISTING=$(gh api "repos/${{ github.repository }}/issues/${PR_NUM}/comments" --jq '.[] | select(.body | startswith("🚀 **Live Preview:**")) | .id' | head -n 1)
+          if [ -n "$EXISTING" ]; then
+            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/${EXISTING}" -f body="$BODY" >/dev/null
+          else
+            gh pr comment "$PR_NUM" --body "$BODY"
+          fi
