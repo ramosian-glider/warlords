@@ -1391,387 +1391,279 @@
       c.width = w; c.height = h;
       return c;
     };
-    const renderGrid = (grid, palette) => {
-      const h = grid.length, w = grid[0].length;
-      const c = mkCanvas(w, h);
-      const g = c.getContext('2d');
+    const addOutline = (c, color = '#12161f') => {
+      const w = c.width, h = c.height, g = c.getContext('2d');
+      const src = g.getImageData(0, 0, w, h).data;
+      const out = mkCanvas(w, h), og = out.getContext('2d');
+      og.fillStyle = color;
       for (let y = 0; y < h; y++) {
-        const row = grid[y];
         for (let x = 0; x < w; x++) {
-          const ch = row[x];
-          if (ch === '.' || !palette[ch]) continue;
-          g.fillStyle = palette[ch];
-          g.fillRect(x, y, 1, 1);
+          if (src[(y * w + x) * 4 + 3] > 0) continue;
+          let adj = false;
+          if (x > 0 && src[(y * w + x - 1) * 4 + 3] > 0) adj = true;
+          else if (x < w - 1 && src[(y * w + x + 1) * 4 + 3] > 0) adj = true;
+          else if (y > 0 && src[((y - 1) * w + x) * 4 + 3] > 0) adj = true;
+          else if (y < h - 1 && src[((y + 1) * w + x) * 4 + 3] > 0) adj = true;
+          if (adj) og.fillRect(x, y, 1, 1);
         }
       }
-      return c;
-    };
-
-    const TERRAIN_PALETTES = {
-      PLAINS:    { g: '#7cb342', l: '#9ccc65', d: '#689f38', y: '#fdd835', w: '#f5f5f5' },
-      WOODS:     { b: '#2e6b34', d: '#1b4d20', m: '#388e3c', l: '#66bb6a', t: '#5d4037', s: '#3e2723' },
-      MOUNTAINS: { b: '#607d8b', d: '#37474f', m: '#78909c', l: '#b0bec5', s: '#eceff1' },
-      SNOW:      { b: '#e3edf2', l: '#ffffff', d: '#cfd8dc', c: '#b3e5fc' }
+      og.drawImage(c, 0, 0);
+      return out;
     };
 
     const getTerrainTile = (terrain, variant) => {
-      const key = `t_${terrain}_${variant}`;
+      const key = `t24_${terrain}_${variant}`;
       if (cache.has(key)) return cache.get(key);
-      const c = mkCanvas(16, 16);
-      const g = c.getContext('2d');
-      const p = TERRAIN_PALETTES[terrain] || TERRAIN_PALETTES.PLAINS;
+      const c = mkCanvas(24, 24), g = c.getContext('2d');
+      const r = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
+
       if (terrain === 'PLAINS') {
-        g.fillStyle = p.g; g.fillRect(0, 0, 16, 16);
-        g.fillStyle = p.l;
-        g.fillRect(2, 3, 2, 1); g.fillRect(10, 7, 2, 1); g.fillRect(5, 12, 2, 1);
-        g.fillStyle = p.d;
-        g.fillRect(3, 4, 1, 1); g.fillRect(11, 8, 1, 1); g.fillRect(13, 2, 1, 2);
-        if (variant === 1) { g.fillStyle = p.y; g.fillRect(6, 6, 1, 1); g.fillRect(12, 12, 1, 1); }
-        if (variant === 2) { g.fillStyle = p.w; g.fillRect(4, 10, 1, 1); g.fillStyle = p.d; g.fillRect(9, 3, 1, 2); }
+        r(0, 0, 24, 24, '#76ab3f');
+        r(0, 0, 24, 24, variant % 2 ? '#7cb342' : '#74a83d');
+        // Subtle grass tufts & clover
+        const tufts = [[3, 4], [14, 3], [8, 12], [18, 15], [4, 19], [13, 20]];
+        tufts.forEach(([tx, ty], i) => {
+          const ox = (tx + variant * 3) % 21, oy = (ty + variant * 2) % 21;
+          r(ox, oy, 2, 1, '#9ccc65');
+          r(ox + 1, oy + 1, 2, 1, '#5d8e2e');
+          if ((i + variant) % 3 === 0) r(ox + 2, oy - 1, 1, 1, '#aed581');
+        });
+        if (variant === 1) { r(6, 7, 1, 1, '#ffee58'); r(17, 11, 1, 1, '#fff59d'); }
+        if (variant === 2) { r(11, 6, 1, 1, '#f5f5f5'); r(5, 16, 2, 1, '#689f38'); }
+        if (variant === 3) { r(16, 6, 1, 1, '#ffca28'); r(9, 17, 1, 1, '#f5f5f5'); }
       } else if (terrain === 'WOODS') {
-        g.fillStyle = p.b; g.fillRect(0, 0, 16, 16);
-        const drawTree = (ox, oy) => {
-          g.fillStyle = p.t; g.fillRect(ox + 2, oy + 5, 2, 2);
-          g.fillStyle = p.d; g.fillRect(ox, oy + 3, 6, 2); g.fillRect(ox + 1, oy + 1, 4, 2);
-          g.fillStyle = p.m; g.fillRect(ox + 1, oy + 2, 4, 2); g.fillRect(ox + 2, oy, 2, 1);
-          g.fillStyle = p.l; g.fillRect(ox + 2, oy + 1, 2, 1);
+        r(0, 0, 24, 24, '#295c2e');
+        r(2, 19, 6, 3, '#214d26'); r(13, 4, 7, 3, '#214d26');
+        const drawPine = (cx, cy) => {
+          r(cx - 1, cy + 7, 3, 3, '#4e342e'); r(cx, cy + 7, 1, 3, '#6d4c41');
+          r(cx - 4, cy + 5, 9, 2, '#1b4320'); r(cx - 3, cy + 3, 7, 2, '#2e6b34');
+          r(cx - 2, cy + 1, 5, 2, '#388e3c'); r(cx - 1, cy - 1, 3, 2, '#4caf50');
+          r(cx, cy - 2, 1, 1, '#81c784');
+          r(cx - 2, cy + 3, 2, 1, '#66bb6a'); r(cx - 3, cy + 5, 2, 1, '#388e3c');
         };
-        if (variant === 0) { drawTree(1, 1); drawTree(8, 2); drawTree(4, 8); }
-        else if (variant === 1) { drawTree(2, 2); drawTree(9, 7); drawTree(1, 9); }
-        else { drawTree(5, 1); drawTree(1, 7); drawTree(9, 8); }
+        const layouts = [
+          [[6, 4], [17, 5], [11, 12], [5, 14]],
+          [[12, 3], [5, 8], [18, 10], [11, 14]],
+          [[7, 3], [16, 6], [6, 13], [17, 14]],
+          [[10, 4], [18, 4], [5, 11], [14, 13]]
+        ];
+        layouts[variant % 4].forEach(([tx, ty]) => drawPine(tx, ty));
       } else if (terrain === 'MOUNTAINS') {
-        g.fillStyle = p.b; g.fillRect(0, 0, 16, 16);
+        r(0, 0, 24, 24, '#546e7a');
+        r(0, 18, 24, 6, '#455a64');
         const drawPeak = (cx, baseY, h) => {
           for (let i = 0; i < h; i++) {
-            const w = i * 2 + 1;
             const y = baseY - h + i;
-            g.fillStyle = i < 2 ? p.s : p.l;
-            g.fillRect(cx - i, y, Math.ceil(w / 2), 1);
-            g.fillStyle = i < 2 ? p.l : p.d;
-            g.fillRect(cx + 1, y, Math.floor(w / 2), 1);
+            const leftW = i + 1, rightW = i;
+            r(cx - i, y, leftW, 1, i < 3 ? '#eceff1' : (i % 3 === 0 ? '#90a4ae' : '#78909c'));
+            if (rightW > 0) r(cx + 1, y, rightW, 1, i < 3 ? '#cfd8dc' : (i % 2 === 0 ? '#37474f' : '#455a64'));
           }
+          r(cx, baseY - h, 1, 1, '#ffffff');
         };
-        drawPeak(5, 14, 9);
-        drawPeak(11, 15, 11);
+        if (variant % 2 === 0) { drawPeak(7, 20, 13); drawPeak(16, 22, 16); }
+        else { drawPeak(16, 19, 12); drawPeak(8, 22, 16); }
       } else {
-        g.fillStyle = p.b; g.fillRect(0, 0, 16, 16);
-        g.fillStyle = p.l; g.fillRect(1, 2, 5, 2); g.fillRect(9, 9, 5, 2);
-        g.fillStyle = p.d; g.fillRect(2, 5, 4, 1); g.fillRect(8, 12, 5, 1);
-        if (variant > 0) { g.fillStyle = p.c; g.fillRect(12, 3, 2, 1); g.fillRect(4, 11, 1, 1); }
+        r(0, 0, 24, 24, '#dce8ee');
+        r(1, 3, 9, 3, '#f5fafc'); r(12, 13, 10, 3, '#f5fafc');
+        r(2, 6, 8, 1, '#b8cbd4'); r(13, 16, 9, 1, '#b8cbd4');
+        r(3, 17, 6, 2, '#eef5f8'); r(14, 5, 7, 2, '#eef5f8');
+        if (variant % 2 === 1) { r(19, 3, 2, 1, '#81d4fa'); r(5, 12, 1, 2, '#b3e5fc'); }
       }
       cache.set(key, c);
       return c;
     };
 
-    const TOWN_GRID = [
-      '.......ff.......',
-      '.......fff......',
-      '.......f........',
-      '..k.k..k..k.k...',
-      '..kkk..k..kkk...',
-      '..kskkkkkkksk...',
-      '..kslssssslsk...',
-      '..kslssssslsk...',
-      '..kslssddsssk...',
-      '..kslsdggdssk...',
-      '..kslsdggdssk...',
-      '..ksssdggdssk...',
-      '..ksssdggdssk...',
-      '..kkkkkkkkkkk...',
-      '................',
-      '................'
-    ];
     const getTownSprite = (owner) => {
-      const key = `town_${owner || 'NEU'}`;
+      const key = `town24_${owner || 'NEU'}`;
       if (cache.has(key)) return cache.get(key);
-      const flag = owner ? CONFIG.FACTIONS[owner].color : '#9e9e9e';
-      const c = renderGrid(TOWN_GRID, {
-        k: '#1c2026', s: '#b0bec5', l: '#eceff1', d: '#546e7a', g: '#263238', f: flag
-      });
-      cache.set(key, c);
-      return c;
+      const c = mkCanvas(24, 24), g = c.getContext('2d');
+      const r = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
+      const flag = owner ? CONFIG.FACTIONS[owner].color : '#90a4ae';
+      const flagHi = owner ? '#ffffff' : '#cfd8dc';
+
+      // Ground shadow
+      r(3, 20, 18, 2, 'rgba(0,0,0,0.35)');
+      // Banner pole & waving flag
+      r(11, 2, 1, 7, '#cfd8dc');
+      r(12, 2, 6, 4, flag);
+      r(13, 3, 2, 1, flagHi);
+      // Central keep tower
+      r(8, 7, 8, 13, '#90a4ae');
+      r(9, 8, 3, 12, '#b0bec5');
+      r(8, 6, 2, 2, '#b0bec5'); r(11, 6, 2, 2, '#b0bec5'); r(14, 6, 2, 2, '#90a4ae');
+      // Twin flanking towers
+      r(3, 9, 5, 11, '#78909c'); r(4, 10, 2, 10, '#b0bec5');
+      r(3, 8, 2, 2, '#b0bec5'); r(6, 8, 2, 2, '#90a4ae');
+      r(16, 9, 5, 11, '#78909c'); r(17, 10, 2, 10, '#90a4ae');
+      r(16, 8, 2, 2, '#b0bec5'); r(19, 8, 2, 2, '#78909c');
+      // Battlement wall & mortar
+      r(7, 12, 10, 8, '#90a4ae');
+      r(8, 13, 8, 1, '#cfd8dc');
+      // Warm torchlit windows
+      r(5, 12, 1, 2, '#ffd54f'); r(18, 12, 1, 2, '#ffd54f');
+      r(11, 9, 2, 2, '#ffca28');
+      // Arched portcullis gate
+      r(9, 15, 6, 5, '#263238');
+      r(10, 14, 4, 1, '#263238');
+      r(11, 15, 1, 5, '#455a64'); r(13, 15, 1, 5, '#455a64');
+      r(9, 17, 6, 1, '#455a64');
+
+      const out = addOutline(c, '#141820');
+      cache.set(key, out);
+      return out;
     };
 
-    const UNIT_SPRITES = {
-      EMP_SCOUT: {
-        p: { k: '#111', b: '#1e3a5f', d: '#263238', e: '#80d8ff', s: '#cfd8dc' },
-        g: [
-          '....kkkk....',
-          '...kbbbbk...',
-          '...kbeekb...',
-          '...kddddk...',
-          '..kkbbbbkk..',
-          '.kbbdbbbksk.',
-          '.k.kbbbbk.k.',
-          '...kddddk...',
-          '...kb..bk...',
-          '..kdk..kdk..',
-          '..kk....kk..',
-          '............'
-        ]
-      },
-      EMP_GUARD: {
-        p: { k: '#111', h: '#212121', r: '#d32f2f', b: '#1976d2', g: '#ffd54f', s: '#cfd8dc', f: '#ffcc80' },
-        g: [
-          '....kkkk....',
-          '...khhhhk...',
-          '...khhhhk...',
-          '...kffffk.ks',
-          '..kkrrrrkks.',
-          '.kbsrggbksk.',
-          '.kbsrrrrksk.',
-          '..kkbbbbk.k.',
-          '...kbbbk..k.',
-          '...kb.bk..k.',
-          '..kkk.kkk...',
-          '............'
-        ]
-      },
-      EMP_PALADIN: {
-        p: { k: '#111', g: '#ffd54f', s: '#eceff1', b: '#1976d2', c: '#42a5f5' },
-        g: [
-          '....kggk....',
-          '...kssssk.kg',
-          '...ksbbskkg.',
-          '..kksssskg..',
-          '.kccggggkk..',
-          '.kcbssssbck.',
-          '.kc.ksssk.k.',
-          '....ksssk...',
-          '...ks..sk...',
-          '...kb..bk...',
-          '..kkk..kkk..',
-          '............'
-        ]
-      },
-      EMP_KNIGHT: {
-        p: { k: '#111', s: '#cfd8dc', b: '#1976d2', g: '#ffd54f', w: '#8d6e63', d: '#5d4037' },
-        g: [
-          '.....kkk..kg',
-          '....kssskkg.',
-          '....kbbbk...',
-          '..kksssskk..',
-          '.kwwbbbbwwk.',
-          'kwwwsssswwwk',
-          'k.kwwwwwwk.k',
-          '..kwddddwk..',
-          '..kwk..kwk..',
-          '..kdk..kdk..',
-          '..kk....kk..',
-          '............'
-        ]
-      },
-      EMP_EAGLE: {
-        p: { k: '#111', b: '#6d4c41', l: '#a1887f', w: '#f5f5f5', g: '#ffb300' },
-        g: [
-          '....kkkk....',
-          '...kwwwwk...',
-          '..kkwwgwk...',
-          'kkbbbbbbbbkk',
-          'kbllbbbbllbk',
-          'kbbllbbllbbk',
-          '.kkbbbbbbkk.',
-          '...kbbbbk...',
-          '....kggk....',
-          '...kg..gk...',
-          '............',
-          '............'
-        ]
-      },
-      SYL_PIXIE: {
-        p: { k: '#111', w: '#80deea', p: '#f48fb1', g: '#66bb6a', y: '#fff59d' },
-        g: [
-          '....kyyk....',
-          '.kk.kppk.kk.',
-          'kwwkkppkkwwk',
-          'kwwwkggkwwwk',
-          '.kkwkggkwkk.',
-          '..kkggggkk..',
-          '....kggk....',
-          '...kg..gk...',
-          '............',
-          '............',
-          '............',
-          '............'
-        ]
-      },
-      SYL_ELF: {
-        p: { k: '#111', g: '#2e7d32', l: '#66bb6a', f: '#ffe0b2', w: '#8d6e63', s: '#eceff1' },
-        g: [
-          '....kkkk....',
-          '...kggggk...',
-          '...kglffk.kw',
-          '...kffffkkw.',
-          '..kkggggkwk.',
-          '.kgglgglks..',
-          '..kkggggkwk.',
-          '...kggggkkw.',
-          '...kg..gk.kw',
-          '..kdk..kdk..',
-          '..kk....kk..',
-          '............'
-        ]
-      },
-      SYL_TROLL: {
-        p: { k: '#111', g: '#33691e', l: '#7cb342', w: '#f5f5f5', t: '#5d4037' },
-        g: [
-          '...kkkkkk...',
-          '..kggllggk..',
-          '..kgwggwgk..',
-          '.kkggggggkk.',
-          'kggllllllggk',
-          'kggggggggggk',
-          'k.kggggggkkt',
-          '..kggggggktt',
-          '..kgg..ggk.k',
-          '..kgg..ggk..',
-          '.kkkk..kkkk.',
-          '............'
-        ]
-      },
-      SYL_UNICORN: {
-        p: { k: '#111', w: '#f5f5f5', l: '#e0f2f1', g: '#ffd54f', c: '#80cbc4' },
-        g: [
-          '.........kg.',
-          '........kg..',
-          '......kkwk..',
-          '.....kwwwk..',
-          '..kkkcccck..',
-          '.kwwwwwwwk..',
-          'kwwwwwwwwk..',
-          'k.kwwllwwk..',
-          '..kwk..kwk..',
-          '..kwk..kwk..',
-          '..kk....kk..',
-          '............'
-        ]
-      },
-      SYL_DRAGON: {
-        p: { k: '#111', g: '#1b5e20', l: '#4caf50', y: '#ffd54f', r: '#ff5722' },
-        g: [
-          '.kk......kk.',
-          'kggk.kk.kggk',
-          'kglgkggkglgk',
-          'kgglgllglggk',
-          '.kkggggggkk.',
-          '...kgyygk...',
-          '..kggggggk..',
-          '..kglrrlgk..',
-          '...kggggk...',
-          '..kgg..ggk..',
-          '..kk....kk..',
-          '............'
-        ]
-      },
-      UND_BAT: {
-        p: { k: '#111', p: '#4a148c', l: '#7b1fa2', r: '#ff1744' },
-        g: [
-          '............',
-          'k...k..k...k',
-          'kpk.kppk.kpk',
-          'kplkkppkklpk',
-          'kppprpprpppk',
-          'kppppppppppk',
-          '.kppkppkppk.',
-          '..kk.kk.kk..',
-          '............',
-          '............',
-          '............',
-          '............'
-        ]
-      },
-      UND_SKEL: {
-        p: { k: '#111', w: '#eceff1', d: '#90a4ae', s: '#b0bec5' },
-        g: [
-          '....kkkk....',
-          '...kwwwwk...',
-          '...kwkkwk.ks',
-          '...kwwwwkks.',
-          '...kkwwkks..',
-          '..kwwddwwk..',
-          '..k.kwwk.k..',
-          '....kddk....',
-          '...kw..wk...',
-          '...kw..wk...',
-          '..kkk..kkk..',
-          '............'
-        ]
-      },
-      UND_GHOUL: {
-        p: { k: '#111', g: '#7cb342', d: '#558b2f', p: '#6a1b9a', r: '#ff5252' },
-        g: [
-          '...kkkkkk...',
-          '..kggggggk..',
-          '..kgrggrgk..',
-          '..kggddggk..',
-          '.kkppppppkk.',
-          'kggppppppggk',
-          'k.kppppppk.k',
-          '..kddddddk..',
-          '...kd..dk...',
-          '..kdk..kdk..',
-          '..kk....kk..',
-          '............'
-        ]
-      },
-      UND_WOLF: {
-        p: { k: '#111', d: '#455a64', l: '#78909c', p: '#7b1fa2', r: '#ff5252' },
-        g: [
-          '........k.k.',
-          '.......kddk.',
-          '......kddrk.',
-          '..kkkkddddk.',
-          '.kddllldddk.',
-          'kddddddddk..',
-          'k.kddppddk..',
-          '..kdk..kdk..',
-          '..kdk..kdk..',
-          '..kk....kk..',
-          '............',
-          '............'
-        ]
-      },
-      UND_DEMON: {
-        p: { k: '#111', r: '#b71c1c', l: '#ef5350', y: '#ffd54f', p: '#4a148c' },
-        g: [
-          '..ky....yk..',
-          '..krrkkrrk..',
-          '..krlrrlrk..',
-          '..kryrryrk..',
-          '.kkrrrrrrkk.',
-          'krrppppppprk',
-          'krrppppppprk',
-          '.kkrrrrrrkk.',
-          '..krr..rrk..',
-          '..krr..rrk..',
-          '.kkkk..kkkk.',
-          '............'
-        ]
-      },
-      NEU_MILITIA: {
-        p: { k: '#111', s: '#90a4ae', l: '#cfd8dc', w: '#8d6e63', g: '#ffd54f' },
-        g: [
-          '..kkkkkkkk..',
-          '.kssssssssk.',
-          '.kslwggwlsk.',
-          '.kslwggwlsk.',
-          '.kslgggglsk.',
-          '.kslwggwlsk.',
-          '..kslgglsk..',
-          '...kslssk...',
-          '....kssk....',
-          '.....kk.....',
-          '............',
-          '............'
-        ]
+    const drawUnit24 = (type) => {
+      const c = mkCanvas(24, 24), g = c.getContext('2d');
+      const r = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
+
+      switch (type) {
+        case 'EMP_SCOUT': // Cloaked ranger/assassin with twin daggers
+          r(8, 4, 8, 6, '#1a2e4c'); r(9, 5, 6, 3, '#28456e');
+          r(9, 7, 6, 3, '#101820'); r(10, 8, 1, 1, '#40c4ff'); r(13, 8, 1, 1, '#40c4ff');
+          r(7, 10, 10, 7, '#1e3a5f'); r(9, 10, 6, 6, '#2b4f7e'); r(8, 14, 8, 1, '#8d6e63');
+          r(4, 11, 3, 2, '#cfd8dc'); r(3, 10, 2, 1, '#eceff1'); // left dagger
+          r(17, 11, 3, 2, '#cfd8dc'); r(19, 10, 2, 1, '#eceff1'); // right dagger
+          r(8, 17, 3, 4, '#263238'); r(13, 17, 3, 4, '#263238');
+          break;
+        case 'EMP_GUARD': // Armored halberdier with tower shield & halberd
+          r(18, 2, 1, 19, '#8d6e63'); r(17, 3, 4, 4, '#cfd8dc'); r(19, 3, 2, 2, '#ffffff'); // halberd
+          r(8, 4, 7, 5, '#90a4ae'); r(9, 4, 5, 2, '#cfd8dc'); r(10, 3, 3, 1, '#1976d2'); // helm
+          r(9, 7, 5, 2, '#ffcc80'); r(10, 7, 1, 1, '#222'); r(12, 7, 1, 1, '#222');
+          r(7, 9, 9, 8, '#1976d2'); r(9, 10, 5, 6, '#2196f3'); r(10, 11, 3, 3, '#ffd54f'); // surcoat
+          r(3, 9, 5, 9, '#1565c0'); r(4, 10, 3, 7, '#cfd8dc'); r(5, 11, 1, 5, '#1976d2'); // tower shield
+          r(8, 17, 3, 4, '#546e7a'); r(12, 17, 3, 4, '#546e7a');
+          break;
+        case 'EMP_PALADIN': // Golden-armored champion with winged helm & glowing greatsword
+          r(5, 8, 14, 10, '#1565c0'); // royal cape
+          r(18, 2, 2, 11, '#fff59d'); r(19, 2, 1, 10, '#ffffff'); r(16, 12, 6, 2, '#ffb300'); r(18, 14, 2, 3, '#5d4037'); // greatsword
+          r(7, 4, 8, 5, '#ffd54f'); r(8, 4, 6, 2, '#fff59d'); r(5, 4, 2, 3, '#eceff1'); r(15, 4, 2, 3, '#eceff1'); // winged helm
+          r(9, 7, 4, 2, '#263238'); r(10, 7, 2, 1, '#80d8ff');
+          r(7, 9, 8, 8, '#eceff1'); r(8, 10, 6, 5, '#ffd54f'); r(10, 11, 2, 3, '#1976d2');
+          r(3, 10, 5, 8, '#ffd54f'); r(4, 11, 3, 6, '#1976d2'); r(5, 12, 1, 4, '#fff59d'); // kite shield
+          r(8, 17, 3, 4, '#cfd8dc'); r(12, 17, 3, 4, '#cfd8dc');
+          break;
+        case 'EMP_KNIGHT': // Mounted warhorse knight with lance & blue barding
+          r(15, 2, 2, 14, '#cfd8dc'); r(17, 3, 4, 3, '#1976d2'); r(17, 4, 3, 1, '#ffd54f'); // lance & pennant
+          r(9, 4, 5, 4, '#cfd8dc'); r(10, 3, 3, 1, '#1976d2'); r(10, 6, 3, 1, '#263238'); // rider helm
+          r(8, 8, 7, 5, '#1976d2'); r(10, 8, 3, 4, '#ffd54f'); // rider torso
+          r(4, 11, 14, 6, '#8d6e63'); r(3, 10, 4, 4, '#a1887f'); r(3, 11, 1, 1, '#111'); // horse head & body
+          r(5, 12, 12, 5, '#1976d2'); r(6, 13, 10, 2, '#42a5f5'); r(7, 15, 8, 1, '#ffd54f'); // barding
+          r(5, 17, 2, 4, '#5d4037'); r(8, 17, 2, 4, '#5d4037'); r(14, 17, 2, 4, '#5d4037'); r(16, 17, 2, 4, '#5d4037');
+          break;
+        case 'EMP_EAGLE': // Soaring giant eagle with spread wings
+          r(2, 6, 8, 5, '#6d4c41'); r(3, 7, 6, 3, '#8d6e63'); r(2, 11, 5, 2, '#4e342e'); // left wing
+          r(14, 6, 8, 5, '#6d4c41'); r(15, 7, 6, 3, '#8d6e63'); r(17, 11, 5, 2, '#4e342e'); // right wing
+          r(8, 9, 8, 7, '#5d4037'); r(9, 10, 6, 5, '#8d6e63');
+          r(9, 4, 6, 5, '#f5f5f5'); r(10, 5, 4, 3, '#ffffff'); r(11, 6, 2, 1, '#111'); // white head
+          r(11, 7, 3, 2, '#ffb300'); // golden beak
+          r(9, 16, 2, 4, '#ffb300'); r(13, 16, 2, 4, '#ffb300'); // talons
+          break;
+        case 'SYL_PIXIE': // Woodland fae with glowing butterfly wings
+          r(3, 5, 7, 6, '#80deea'); r(4, 6, 5, 4, '#e0f7fa'); r(4, 11, 5, 4, '#4dd0e1'); // left wing
+          r(14, 5, 7, 6, '#80deea'); r(15, 6, 5, 4, '#e0f7fa'); r(15, 11, 5, 4, '#4dd0e1'); // right wing
+          r(10, 5, 4, 4, '#ffe0b2'); r(9, 4, 6, 2, '#f06292'); // head & hair
+          r(9, 9, 6, 7, '#43a047'); r(10, 10, 4, 5, '#81c784'); // leaf dress
+          r(16, 4, 1, 7, '#fff59d'); r(15, 3, 3, 2, '#ffee58'); // wand
+          r(10, 16, 1, 3, '#ffe0b2'); r(13, 16, 1, 3, '#ffe0b2');
+          break;
+        case 'SYL_ELF': // Forest sentinel archer with longbow
+          r(8, 4, 7, 5, '#2e7d32'); r(9, 4, 5, 2, '#4caf50'); // hood
+          r(9, 7, 5, 3, '#ffe0b2'); r(10, 8, 1, 1, '#1b5e20'); r(12, 8, 1, 1, '#1b5e20');
+          r(7, 10, 8, 7, '#2e7d32'); r(8, 11, 6, 5, '#43a047'); r(8, 14, 6, 1, '#8d6e63');
+          r(16, 5, 2, 13, '#8d6e63'); r(18, 7, 1, 9, '#a1887f'); // longbow
+          r(13, 11, 8, 1, '#eceff1'); r(20, 10, 2, 3, '#80deea'); // glowing arrow
+          r(8, 17, 3, 4, '#4e342e'); r(12, 17, 3, 4, '#4e342e');
+          break;
+        case 'SYL_TROLL': // Massive moss-covered troll with tree club
+          r(18, 4, 3, 13, '#5d4037'); r(17, 4, 5, 5, '#6d4c41'); r(18, 3, 3, 2, '#4caf50'); // mossy club
+          r(7, 4, 9, 6, '#558b2f'); r(8, 4, 7, 2, '#7cb342'); // head
+          r(9, 7, 2, 1, '#ffee58'); r(13, 7, 2, 1, '#ffee58'); // eyes
+          r(9, 9, 1, 2, '#f5f5f5'); r(14, 9, 1, 2, '#f5f5f5'); // tusks
+          r(4, 10, 14, 8, '#33691e'); r(5, 10, 12, 4, '#558b2f'); r(6, 11, 4, 2, '#8bc34a'); // mossy shoulders
+          r(6, 18, 4, 4, '#33691e'); r(12, 18, 4, 4, '#33691e');
+          break;
+        case 'SYL_UNICORN': // Rearing pearl-white unicorn with golden horn
+          r(17, 2, 2, 2, '#ffd54f'); r(16, 4, 2, 2, '#ffca28'); // spiraling horn
+          r(12, 5, 6, 4, '#ffffff'); r(14, 6, 1, 1, '#263238'); // head
+          r(9, 6, 4, 5, '#80cbc4'); r(10, 7, 3, 4, '#b2dfdb'); // flowing mane
+          r(5, 10, 12, 6, '#f5f5f5'); r(6, 11, 10, 4, '#ffffff'); // body
+          r(3, 11, 3, 4, '#80cbc4'); // tail
+          r(5, 16, 2, 5, '#e0e0e0'); r(8, 16, 2, 5, '#e0e0e0'); r(13, 16, 2, 5, '#e0e0e0'); r(16, 14, 2, 5, '#e0e0e0');
+          break;
+        case 'SYL_DRAGON': // Winged emerald dragon
+          r(2, 4, 7, 8, '#1b5e20'); r(3, 5, 5, 6, '#43a047'); // left wing
+          r(15, 4, 7, 8, '#1b5e20'); r(16, 5, 5, 6, '#43a047'); // right wing
+          r(8, 3, 2, 3, '#ffd54f'); r(14, 3, 2, 3, '#ffd54f'); // horns
+          r(8, 5, 8, 6, '#2e7d32'); r(9, 6, 6, 4, '#4caf50');
+          r(9, 7, 2, 1, '#ffee58'); r(13, 7, 2, 1, '#ffee58'); // eyes
+          r(10, 10, 4, 2, '#ff7043'); // fire glow
+          r(7, 11, 10, 7, '#1b5e20'); r(9, 12, 6, 5, '#81c784'); // scaled belly
+          r(7, 18, 3, 3, '#2e7d32'); r(14, 18, 3, 3, '#2e7d32');
+          break;
+        case 'UND_BAT': // Swooping vampiric dread bat
+          r(2, 6, 8, 6, '#4a148c'); r(3, 7, 6, 4, '#6a1b9a'); r(2, 12, 2, 2, '#311b92'); r(6, 12, 2, 2, '#311b92');
+          r(14, 6, 8, 6, '#4a148c'); r(15, 7, 6, 4, '#6a1b9a'); r(16, 12, 2, 2, '#311b92'); r(20, 12, 2, 2, '#311b92');
+          r(9, 7, 6, 7, '#311b92'); r(9, 5, 2, 2, '#4a148c'); r(13, 5, 2, 2, '#4a148c'); // ears
+          r(10, 9, 1, 1, '#ff1744'); r(13, 9, 1, 1, '#ff1744'); // red eyes
+          r(10, 11, 1, 2, '#ffffff'); r(13, 11, 1, 2, '#ffffff'); // fangs
+          break;
+        case 'UND_SKEL': // Undead legionnaire skeleton with sword & shield
+          r(18, 4, 2, 10, '#b0bec5'); r(19, 4, 1, 9, '#eceff1'); r(17, 13, 4, 1, '#78909c'); // notched sword
+          r(8, 4, 7, 6, '#eceff1'); r(9, 4, 5, 2, '#ffffff'); // skull
+          r(9, 6, 2, 2, '#1a1a24'); r(12, 6, 2, 2, '#1a1a24'); r(10, 9, 3, 1, '#90a4ae'); // sockets & teeth
+          r(7, 10, 9, 7, '#4a148c'); // tattered cloak
+          r(9, 10, 5, 6, '#cfd8dc'); r(10, 11, 3, 1, '#4a148c'); r(10, 13, 3, 1, '#4a148c'); // ribcage
+          r(3, 10, 5, 7, '#6a1b9a'); r(4, 11, 3, 5, '#b0bec5'); // shield
+          r(9, 17, 2, 4, '#eceff1'); r(12, 17, 2, 4, '#eceff1');
+          break;
+        case 'UND_GHOUL': // Feral plague ghoul with outstretched claws
+          r(7, 5, 9, 6, '#7cb342'); r(8, 5, 7, 2, '#9ccc65'); // head
+          r(9, 7, 2, 1, '#ff1744'); r(13, 7, 2, 1, '#ff1744'); r(10, 9, 4, 1, '#33691e');
+          r(6, 11, 11, 6, '#4a148c'); r(8, 12, 7, 4, '#6a1b9a'); // rags
+          r(3, 10, 4, 4, '#7cb342'); r(2, 12, 2, 2, '#ef5350'); // left claw
+          r(17, 10, 4, 4, '#7cb342'); r(20, 12, 2, 2, '#ef5350'); // right claw
+          r(7, 17, 3, 4, '#558b2f'); r(13, 17, 3, 4, '#558b2f');
+          break;
+        case 'UND_WOLF': // Snarling shadow dire wolf
+          r(15, 5, 2, 3, '#37474f'); r(18, 5, 2, 3, '#37474f'); // ears
+          r(14, 7, 7, 5, '#455a64'); r(15, 8, 5, 3, '#607d8b'); // head
+          r(17, 8, 2, 1, '#ff1744'); r(19, 11, 2, 1, '#ffffff'); // eye & fang
+          r(4, 10, 12, 6, '#37474f'); r(6, 10, 9, 3, '#6a1b9a'); // bristled shadow mane
+          r(2, 11, 3, 3, '#455a64'); // tail
+          r(5, 16, 2, 5, '#263238'); r(8, 16, 2, 5, '#263238'); r(13, 16, 2, 5, '#263238'); r(16, 16, 2, 5, '#263238');
+          break;
+        case 'UND_DEMON': // Towering horned abyssal oni with kanabo
+          r(18, 3, 3, 15, '#37474f'); r(17, 4, 5, 6, '#455a64'); r(17, 5, 1, 1, '#cfd8dc'); r(21, 7, 1, 1, '#cfd8dc'); // spiked club
+          r(6, 2, 2, 4, '#ffd54f'); r(15, 2, 2, 4, '#ffd54f'); // horns
+          r(7, 4, 9, 6, '#b71c1c'); r(8, 5, 7, 4, '#d32f2f'); // crimson head
+          r(9, 6, 2, 2, '#ffee58'); r(13, 6, 2, 2, '#ffee58'); // glowing eyes
+          r(5, 10, 13, 8, '#880e4f'); r(6, 10, 11, 5, '#c62828'); r(8, 12, 7, 3, '#4a148c'); // armored torso
+          r(6, 18, 4, 4, '#8e0000'); r(13, 18, 4, 4, '#8e0000');
+          break;
+        default: // NEU_MILITIA: Town watchman with kettle helm & heater shield
+          r(17, 3, 1, 18, '#8d6e63'); r(16, 2, 3, 3, '#cfd8dc'); // spear
+          r(7, 5, 9, 3, '#78909c'); r(9, 4, 5, 2, '#b0bec5'); // kettle helm
+          r(9, 8, 5, 2, '#ffcc80');
+          r(7, 10, 9, 7, '#546e7a'); r(9, 11, 5, 5, '#78909c');
+          r(3, 10, 6, 8, '#8d6e63'); r(4, 11, 4, 6, '#cfd8dc'); r(5, 12, 2, 4, '#ffd54f'); // heater shield
+          r(8, 17, 3, 4, '#455a64'); r(12, 17, 3, 4, '#455a64');
+          break;
       }
+
+      const outlined = addOutline(c, '#12161f');
+      // Add subtle ground shadow underneath
+      const finalC = mkCanvas(24, 24), fg = finalC.getContext('2d');
+      fg.fillStyle = 'rgba(0,0,0,0.32)';
+      fg.fillRect(5, 21, 14, 2);
+      fg.drawImage(outlined, 0, 0);
+      return finalC;
     };
 
     const getUnitSprite = (type) => {
-      const key = `u_${type}`;
+      const key = `u24_${type}`;
       if (cache.has(key)) return cache.get(key);
-      const spec = UNIT_SPRITES[type] || UNIT_SPRITES.NEU_MILITIA;
-      const c = renderGrid(spec.g, spec.p);
+      const c = drawUnit24(type);
       cache.set(key, c);
       return c;
     };
@@ -1801,7 +1693,7 @@
         if (px + ts < 0 || py + ts < 0 || px > rect.width || py > rect.height) continue;
 
         if (pixelArtMode) {
-          const variant = (x * 7 + y * 13) % 3;
+          const variant = (x * 7 + y * 13) % 4;
           ctx.drawImage(PixelArt.getTerrainTile(tile.terrain, variant), px, py, ts, ts);
         } else {
           ctx.fillStyle = CONFIG.TERRAIN[tile.terrain].color;
@@ -1856,7 +1748,7 @@
             if (t >= 1) animatingUnits.delete(top.id);
           }
           if (pixelArtMode) {
-            ctx.drawImage(PixelArt.getUnitSprite(top.type), drawX + ts * 0.12, drawY + ts * 0.1, ts * 0.76, ts * 0.76);
+            ctx.drawImage(PixelArt.getUnitSprite(top.type), drawX + ts * 0.07, drawY + ts * 0.06, ts * 0.86, ts * 0.86);
           } else {
             ctx.font = `${Math.floor(ts * 0.55)}px sans-serif`;
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
