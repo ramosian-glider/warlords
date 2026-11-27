@@ -1977,18 +1977,37 @@
     }
   });
 
-  async function showSimModal() {
-    const gamesPerDiff = 50, maxTurns = 60;
+  async function showSimModal(selectedSize = 'S') {
+    const sizeOrder = ['S', 'M', 'L', 'XL'];
+    const gamesBySize = { S: 50, M: 30, L: 15, XL: 10 };
+    const gamesPerDiff = gamesBySize[selectedSize] || 50;
+    const maxTurns = 100;
     const diffs = ['easy', 'normal', 'hard'];
     const totalGames = gamesPerDiff * diffs.length;
     const order = ['EMPIRE', 'SYLVAN', 'UNDEAD'];
     const tier3Ids = new Set(Object.values(CONFIG.UNITS).filter(u => u.cost >= 300).map(u => u.id));
     let cancelled = false;
 
+    const sizePillsHtml = sizeOrder.map(sId => {
+      const sz = CONFIG.MAP_SIZES[sId];
+      const checked = sId === selectedSize;
+      return `
+        <label class="size-pill${checked ? ' selected' : ''}" data-sim-size="${sId}">
+          <input type="radio" name="sim-size" value="${sId}" ${checked ? 'checked' : ''}>
+          <span class="sp-code">${sId}</span>
+          <span class="sp-dim">${sz.width}×${sz.height}</span>
+        </label>`;
+    }).join('');
+
     openModal('Balance Simulation',
-      `<div id="sim-status" style="font-size:13px;color:var(--muted);text-align:center;padding:12px 0;">Running 0/${totalGames} games...</div><div id="sim-results"></div>`,
+      `<div class="size-grid" id="sim-size-picker">${sizePillsHtml}</div>
+       <div id="sim-status" style="font-size:13px;color:var(--muted);text-align:center;padding:8px 0;">Running 0/${totalGames} games (${selectedSize})...</div>
+       <div id="sim-results"></div>`,
       `<button class="btn-sm sec" id="sim-back">Back</button>`);
     document.getElementById('sim-back').onclick = () => { cancelled = true; showMenuModal(); };
+    document.getElementById('sim-size-picker').querySelectorAll('input[name="sim-size"]').forEach(radio => {
+      radio.onchange = () => { cancelled = true; showSimModal(radio.value); };
+    });
 
     let done = 0;
     const cards = [];
@@ -1997,7 +2016,7 @@
       let turnsSum = 0, finished = 0, peakSum = 0, disbands = 0, t3Games = 0;
       for (let g = 0; g < gamesPerDiff; g++) {
         if (cancelled) return;
-        const s = MapGen.generate('EMPIRE', 3000 + g * 37 + done * 13, dId);
+        const s = MapGen.generate('EMPIRE', 3000 + g * 37 + done * 13, dId, selectedSize);
         let peak = 0, hadT3 = false;
         for (let t = 1; t <= maxTurns && !s.winner; t++) {
           s.turn = t;
@@ -2017,9 +2036,9 @@
         peakSum += peak;
         if (hadT3) t3Games++;
         done++;
-        if (done % 3 === 0 || done === totalGames) {
+        if (done % 2 === 0 || done === totalGames) {
           const st = document.getElementById('sim-status');
-          if (st) st.textContent = done < totalGames ? `Running ${done}/${totalGames} games...` : `Completed ${totalGames} games (${gamesPerDiff}/difficulty)`;
+          if (st) st.textContent = done < totalGames ? `Running ${done}/${totalGames} games (${selectedSize})...` : `Completed ${totalGames} games (${gamesPerDiff}/difficulty on ${selectedSize})`;
           await new Promise(r => setTimeout(r, 0));
         }
       }
@@ -2096,7 +2115,7 @@
       openModal(`Unit Tests (${passed}/${results.length})`, html, `<button class="btn-sm sec" id="t-back">Back</button>`);
       document.getElementById('t-back').onclick = showMenuModal;
     };
-    document.getElementById('m-sim').onclick = showSimModal;
+    document.getElementById('m-sim').onclick = () => showSimModal((gameState && gameState.mapSize) || 'S');
   }
 
   document.getElementById('menu-btn').onclick = showMenuModal;
