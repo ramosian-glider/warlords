@@ -236,17 +236,42 @@
   .menu-hero-title { font-size: 24px; font-weight: 800; letter-spacing: 0.02em; color: var(--text); }
   .modal.menu-mode .modal-header { border-bottom: none; padding-bottom: 0; justify-content: flex-end; }
   .modal.menu-mode #modal-title { display: none; }
+  .faction-pill { cursor: pointer; }
+  .faction-pill:active { transform: scale(0.96); }
+  .info-dropdown {
+    position: absolute; top: 52px; left: 10px; right: 10px; max-width: 340px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px; box-shadow: 0 12px 28px rgba(0,0,0,0.55); z-index: 30;
+    display: none; flex-direction: column; gap: 10px; font-size: 12px;
+  }
+  .info-dropdown.open { display: flex; }
+  .info-meta {
+    display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border); font-weight: 700; color: var(--text);
+  }
+  .info-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 5px 8px; border-radius: 8px; background: var(--surface-2);
+  }
+  .info-row.dead { opacity: 0.45; text-decoration: line-through; }
+  .info-row-left { display: flex; align-items: center; gap: 6px; font-weight: 700; min-width: 0; }
+  .info-row-stats { display: flex; align-items: center; gap: 8px; color: var(--muted); font-weight: 600; flex-shrink: 0; }
+  .info-econ {
+    display: flex; justify-content: space-between; padding-top: 6px;
+    border-top: 1px solid var(--border); color: var(--muted); font-weight: 600;
+  }
 </style>
 </head>
 <body>
 <div id="app">
   <header id="topbar">
-    <div id="faction-badge" class="faction-pill">👑 Empire</div>
+    <div id="faction-badge" class="faction-pill">👑 Empire ▾</div>
     <div class="stat-pill" id="gold-stat">💰 0 (+0)</div>
     <div class="stat-pill" id="town-stat">🏰 0/0</div>
-    <div class="stat-pill" id="turn-stat">T1</div>
+    <div class="stat-pill" id="turn-stat">⏳ 1</div>
     <button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button>
   </header>
+  <div id="game-info-dropdown" class="info-dropdown"></div>
 
   <main id="map-wrap">
     <canvas id="game-canvas"></canvas>
@@ -1329,12 +1354,16 @@
   function resizeCanvas() {
     const rect = mapWrap.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.max(1, rect.width) * dpr;
-    canvas.height = Math.max(1, rect.height) * dpr;
+    canvas.width = Math.round(Math.max(1, rect.width) * dpr);
+    canvas.height = Math.round(Math.max(1, rect.height) * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     render();
   }
   window.addEventListener('resize', resizeCanvas);
+  window.addEventListener('pageshow', resizeCanvas);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) resizeCanvas();
+  });
 
   const animatingUnits = new Map();
   let animFrameId = null;
@@ -1353,6 +1382,14 @@
 
   function render() {
     const rect = mapWrap.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const targetW = Math.round(Math.max(1, rect.width) * dpr);
+    const targetH = Math.round(Math.max(1, rect.height) * dpr);
+    if (canvas.width !== targetW || canvas.height !== targetH) {
+      canvas.width = targetW;
+      canvas.height = targetH;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, rect.width, rect.height);
     if (!gameState) return;
     const ts = CONFIG.TILE_SIZE * camera.zoom;
@@ -1436,11 +1473,74 @@
     }
   }
 
+  const infoDropdown = document.getElementById('game-info-dropdown');
+  function renderGameInfoDropdown() {
+    if (!gameState || !infoDropdown.classList.contains('open')) return;
+    const diff = getDifficulty(gameState);
+    const sizeLabel = gameState.mapSize
+      ? `${gameState.mapSize} (${gameState.map.width}×${gameState.map.height})`
+      : `${gameState.map.width}×${gameState.map.height}`;
+    const neutralTowns = gameState.towns.filter(t => t.owner === null).length;
+    const rows = ['EMPIRE', 'SYLVAN', 'UNDEAD'].map(id => {
+      const f = CONFIG.FACTIONS[id];
+      const alive = gameState.factions[id].alive;
+      const towns = gameState.towns.filter(t => t.owner === id).length;
+      const units = gameState.units.filter(u => u.owner === id).length;
+      const isYou = id === gameState.humanFaction;
+      return `
+        <div class="info-row${alive ? '' : ' dead'}">
+          <div class="info-row-left">
+            <span>${f.emoji}</span>
+            <span>${f.name}${isYou ? ' (You)' : ''}</span>
+          </div>
+          <div class="info-row-stats">
+            <span>🏰 ${towns}</span>
+            <span>⚔️ ${units}</span>
+          </div>
+        </div>`;
+    }).join('');
+    const fId = gameState.humanFaction;
+    const income = EconomySystem.getFactionIncome(gameState, fId);
+    const upkeep = EconomySystem.getFactionUpkeep(gameState, fId);
+    const net = income - upkeep;
+    infoDropdown.innerHTML = `
+      <div class="info-meta">
+        <span>${diff.emoji} ${diff.label}</span>
+        <span>🗺️ ${sizeLabel}</span>
+        <span>⏳ ${gameState.turn}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px;">
+        ${rows}
+        <div class="info-row" style="opacity:0.75;">
+          <div class="info-row-left"><span>🏳️</span><span>Neutral Towns</span></div>
+          <div class="info-row-stats"><span>🏰 ${neutralTowns}</span></div>
+        </div>
+      </div>
+      <div class="info-econ">
+        <span>Income: +${income}g</span>
+        <span>Upkeep: -${upkeep}g</span>
+        <span style="color:${net < 0 ? '#ef5350' : 'var(--text)'}">Net: ${net >= 0 ? '+' : ''}${net}g</span>
+      </div>`;
+  }
+
+  document.getElementById('faction-badge').onclick = (e) => {
+    e.stopPropagation();
+    if (!gameState) return;
+    infoDropdown.classList.toggle('open');
+    renderGameInfoDropdown();
+  };
+  document.addEventListener('pointerdown', (e) => {
+    if (!infoDropdown.classList.contains('open')) return;
+    if (!infoDropdown.contains(e.target) && e.target.id !== 'faction-badge') {
+      infoDropdown.classList.remove('open');
+    }
+  });
+
   function updateHUD() {
     if (!gameState) return;
     const fId = gameState.humanFaction, f = CONFIG.FACTIONS[fId];
     const badge = document.getElementById('faction-badge');
-    badge.textContent = `${f.emoji} ${f.name.split(' ')[0]}`;
+    badge.textContent = `${f.emoji} ${f.name.split(' ')[0]} ▾`;
     badge.style.background = f.color;
 
     const ownedTowns = gameState.towns.filter(t => t.owner === fId);
@@ -1451,7 +1551,8 @@
     goldEl.textContent = `💰 ${gameState.factions[fId].gold} (${net >= 0 ? '+' : ''}${net})`;
     goldEl.style.color = net < 0 ? '#ef5350' : '';
     document.getElementById('town-stat').textContent = `🏰 ${ownedTowns.length}/${gameState.towns.length}`;
-    document.getElementById('turn-stat').textContent = `T${gameState.turn}`;
+    document.getElementById('turn-stat').textContent = `⏳ ${gameState.turn}`;
+    renderGameInfoDropdown();
 
     const avatar = document.getElementById('drawer-avatar');
     const title = document.getElementById('drawer-title');
