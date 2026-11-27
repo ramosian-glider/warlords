@@ -1,0 +1,2253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Emoji Warlords</title>
+<style>
+  :root {
+    --bg: #12151a;
+    --surface: #1d222b;
+    --surface-2: #272d38;
+    --border: #363e4d;
+    --text: #f0f4f8;
+    --muted: #9aa5b1;
+    --accent: #f59e0b;
+    --empire: #1976d2;
+    --sylvan: #2e7d32;
+    --undead: #6a1b9a;
+    --danger: #e53935;
+    --success: #43a047;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100dvh; min-height: 380px; overflow: hidden;
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overscroll-behavior: none;
+  }
+  #app {
+    display: flex; flex-direction: column; width: 100%; height: 100dvh; min-height: 380px; max-width: 600px;
+    margin: 0 auto; background: var(--bg); position: relative;
+  }
+  /* Top Status Bar */
+  #topbar {
+    height: 48px; min-height: 48px; flex-shrink: 0; background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 10px; gap: 6px; z-index: 10;
+  }
+  .faction-pill {
+    display: flex; align-items: center; gap: 6px; padding: 4px 10px;
+    border-radius: 999px; font-weight: 700; font-size: 13px; color: #fff;
+    white-space: nowrap;
+  }
+  .stat-pill {
+    display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600;
+    background: var(--surface-2); padding: 4px 8px; border-radius: 8px; white-space: nowrap;
+  }
+  .icon-btn {
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; height: 34px; min-width: 34px; padding: 0 10px;
+    font-size: 16px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .icon-btn:active { transform: scale(0.95); }
+
+  /* Canvas Map */
+  #map-wrap {
+    flex: 1 1 0%; min-height: 200px; position: relative; overflow: hidden; background: #0d1014; touch-action: none;
+  }
+  #game-canvas { display: block; width: 100%; height: 100%; }
+  #toast {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    background: rgba(18, 21, 26, 0.92); border: 1px solid var(--border);
+    color: var(--text); padding: 6px 14px; border-radius: 999px;
+    font-size: 13px; font-weight: 600; pointer-events: none;
+    opacity: 0; transition: opacity 0.2s; z-index: 15; white-space: nowrap;
+  }
+  #toast.show { opacity: 1; }
+
+  /* Bottom Action Drawer */
+  #drawer {
+    flex-shrink: 0; min-height: 132px; background: var(--surface);
+    border-top: 1px solid var(--border); padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+    display: flex; flex-direction: column; justify-content: space-between; gap: 6px; z-index: 10;
+  }
+  .drawer-info {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    min-height: 68px;
+  }
+  .drawer-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+  .unit-avatar {
+    font-size: 30px; width: 48px; height: 48px; background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .info-lines { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+  .info-title { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .info-sub { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stack-strip { display: flex; gap: 4px; flex-wrap: nowrap; overflow-x: auto; max-width: 185px; flex-shrink: 0; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .stack-strip::-webkit-scrollbar { display: none; }
+  .stack-chip {
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; padding: 4px 6px; font-size: 12px; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; gap: 3px; flex-shrink: 0;
+  }
+  .stack-chip.active { border-color: var(--accent); background: rgba(245, 158, 11, 0.2); }
+  .drawer-actions {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+  }
+  .act-btn {
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; height: 42px; font-size: 12px; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;
+    padding: 0 4px;
+  }
+  .act-btn.primary { background: var(--accent); color: #111; border-color: var(--accent); }
+  .act-btn.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+  .act-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .act-btn:active:not(:disabled) { transform: scale(0.97); }
+
+  /* Modals */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.72);
+    display: none; align-items: center; justify-content: center; padding: 14px; z-index: 999;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: #1d222b; border: 1px solid var(--border); border-radius: 14px;
+    width: 100%; max-width: 440px; min-height: 160px; max-height: 85%;
+    display: flex; flex-direction: column; flex-shrink: 0;
+    overflow: hidden; box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+  }
+  .modal-header {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 16px;
+  }
+  .modal-body { padding: 14px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+  .modal-footer {
+    padding: 10px 16px; border-top: 1px solid var(--border);
+    display: flex; justify-content: flex-end; gap: 8px;
+  }
+  .list-card {
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .list-card-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .list-card-emoji { font-size: 26px; }
+  .btn-sm {
+    background: var(--accent); color: #111; border: none; border-radius: 8px;
+    padding: 8px 12px; font-weight: 700; font-size: 12px; cursor: pointer; white-space: nowrap;
+  }
+  .btn-sm.sec { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+  .btn-sm:disabled { opacity: 0.4; cursor: not-allowed; }
+  .battle-log {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+    background: #0d1014; border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px; max-height: 240px; overflow-y: auto; line-height: 1.5;
+  }
+  .test-pass { color: #66bb6a; font-weight: 700; }
+  .test-fail { color: #ef5350; font-weight: 700; }
+
+  /* New Game Controls */
+  .new-game-box {
+    display: flex; flex-direction: column; gap: 12px;
+    background: rgba(13, 16, 20, 0.45); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px;
+  }
+  .field-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--muted);
+  }
+  .faction-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  }
+  .faction-card {
+    position: relative; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 4px; padding: 10px 6px; border-radius: 10px;
+    background: var(--surface-2); border: 2px solid var(--border);
+    cursor: pointer; text-align: center; transition: border-color 0.15s, background 0.15s, transform 0.1s;
+  }
+  .faction-card input { position: absolute; opacity: 0; pointer-events: none; }
+  .faction-card:active { transform: scale(0.97); }
+  .faction-card .fc-emoji { font-size: 24px; line-height: 1; }
+  .faction-card .fc-name { font-size: 12px; font-weight: 700; color: var(--text); }
+  .faction-card.selected {
+    border-color: var(--fc-color, var(--accent));
+    background: color-mix(in srgb, var(--fc-color, var(--accent)) 22%, var(--surface-2));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--fc-color, var(--accent)) 45%, transparent);
+  }
+  .diff-wrap { display: flex; flex-direction: column; gap: 6px; }
+  .diff-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .diff-badge {
+    font-size: 12px; font-weight: 700; color: var(--accent);
+    background: rgba(245, 158, 11, 0.14); border: 1px solid rgba(245, 158, 11, 0.35);
+    padding: 2px 8px; border-radius: 999px;
+  }
+  .diff-slider {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
+    border-radius: 999px; background: var(--surface-2); outline: none;
+    border: 1px solid var(--border); cursor: pointer;
+  }
+  .diff-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 20px; height: 20px;
+    border-radius: 50%; background: var(--accent); border: 2px solid #111;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.45); cursor: pointer;
+  }
+  .diff-slider::-moz-range-thumb {
+    width: 20px; height: 20px; border-radius: 50%; background: var(--accent);
+    border: 2px solid #111; box-shadow: 0 2px 6px rgba(0,0,0,0.45); cursor: pointer;
+  }
+  .diff-ticks {
+    display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); font-weight: 600;
+  }
+  .diff-desc { font-size: 12px; color: var(--muted); min-height: 16px; }
+  .town-status {
+    background: rgba(13, 16, 20, 0.55); border: 1px solid var(--border);
+    border-radius: 10px; padding: 9px 12px; font-size: 12px; font-weight: 600;
+    color: var(--text); display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .status-pill {
+    font-size: 11px; font-weight: 700; padding: 6px 10px; border-radius: 8px;
+    background: rgba(245, 158, 11, 0.16); color: var(--accent);
+    border: 1px solid rgba(245, 158, 11, 0.4); white-space: nowrap;
+  }
+  .menu-hero {
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    padding: 8px 0 6px; gap: 6px;
+  }
+  .menu-hero-icon { font-size: 46px; line-height: 1; }
+  .menu-hero-title { font-size: 24px; font-weight: 800; letter-spacing: 0.02em; color: var(--text); }
+  .modal.menu-mode .modal-header { border-bottom: none; padding-bottom: 0; justify-content: flex-end; }
+  .modal.menu-mode #modal-title { display: none; }
+  .faction-pill { cursor: pointer; }
+  .faction-pill:active { transform: scale(0.96); }
+  .info-dropdown {
+    position: absolute; top: 52px; left: 10px; right: 10px; max-width: 340px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px; box-shadow: 0 12px 28px rgba(0,0,0,0.55); z-index: 30;
+    display: none; flex-direction: column; gap: 10px; font-size: 12px;
+  }
+  .info-dropdown.open { display: flex; }
+  .info-meta {
+    display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border); font-weight: 700; color: var(--text);
+  }
+  .info-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 5px 8px; border-radius: 8px; background: var(--surface-2);
+  }
+  .info-row.dead { opacity: 0.45; text-decoration: line-through; }
+  .info-row-left { display: flex; align-items: center; gap: 6px; font-weight: 700; min-width: 0; }
+  .info-row-stats { display: flex; align-items: center; gap: 8px; color: var(--muted); font-weight: 600; flex-shrink: 0; }
+  .info-econ {
+    display: flex; justify-content: space-between; padding-top: 6px;
+    border-top: 1px solid var(--border); color: var(--muted); font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <div id="faction-badge" class="faction-pill">👑 Empire ▾</div>
+    <div class="stat-pill" id="gold-stat">💰 0 (+0)</div>
+    <div class="stat-pill" id="town-stat">🏰 0/0</div>
+    <div class="stat-pill" id="turn-stat">⏳ 1</div>
+    <button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button>
+  </header>
+  <div id="game-info-dropdown" class="info-dropdown"></div>
+
+  <main id="map-wrap">
+    <canvas id="game-canvas"></canvas>
+    <div id="toast"></div>
+  </main>
+
+  <footer id="drawer">
+    <div class="drawer-info" id="drawer-info">
+      <div class="drawer-left">
+        <div class="unit-avatar" id="drawer-avatar">🗺️</div>
+        <div class="info-lines">
+          <div class="info-title" id="drawer-title">Tap a unit or town</div>
+          <div class="info-sub" id="drawer-sub">Pan with 1 finger • Pinch or scroll to zoom</div>
+        </div>
+      </div>
+      <div class="stack-strip" id="stack-strip"></div>
+    </div>
+    <div class="drawer-actions" id="drawer-actions">
+      <button class="act-btn" id="btn-band" disabled>🔗 Band</button>
+      <button class="act-btn" id="btn-wait" disabled>⏸ Wait</button>
+      <button class="act-btn" id="btn-next">⏭️ Next</button>
+      <button class="act-btn primary" id="btn-end">End Turn</button>
+    </div>
+  </footer>
+
+  <!-- Generic Modal -->
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <span id="modal-title">Menu</span>
+        <button class="icon-btn" id="modal-close">✕</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-footer" id="modal-footer"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  // =========================================================================
+  // 1. CONFIG TABLES
+  // =========================================================================
+  const CONFIG = {
+    MAP_WIDTH: 16,
+    MAP_HEIGHT: 22,
+    TILE_SIZE: 44,
+    MAX_STACK: 6,
+    MIN_TOWN_DIST: 4,
+    TOWN_COUNT_MIN: 12,
+    TOWN_COUNT_MAX: 16,
+    TOWN_INCOME: 25,
+    TERRAIN: {
+      PLAINS:    { id: 'PLAINS',    name: 'Plains',    color: '#8bc34a', moveCost: 2 },
+      WOODS:     { id: 'WOODS',     name: 'Woods',     color: '#388e3c', moveCost: 3 },
+      MOUNTAINS: { id: 'MOUNTAINS', name: 'Mountains', color: '#78909c', moveCost: 5 },
+      SNOW:      { id: 'SNOW',      name: 'Snow',      color: '#eceff1', moveCost: 4 },
+      TOWN:      { id: 'TOWN',      name: 'Town',      color: '#d7ccc8', moveCost: 2 }
+    },
+    TERRAIN_MODS: {
+      PLAINS:    { defaultAtk: 0,  defaultDef: 0 },
+      WOODS:     { defaultAtk: 0,  defaultDef: 1 },
+      MOUNTAINS: { defaultAtk: 0,  defaultDef: 2 },
+      SNOW:      { defaultAtk: -1, defaultDef: 0 },
+      TOWN:      { defaultAtk: 0,  defaultDef: 2, firstStrike: true }
+    },
+    FACTIONS: {
+      EMPIRE: { id: 'EMPIRE', name: 'Crown Empire',    emoji: '👑', color: '#1976d2' },
+      SYLVAN: { id: 'SYLVAN', name: 'Sylvan Covenant', emoji: '🌿', color: '#2e7d32' },
+      UNDEAD: { id: 'UNDEAD', name: 'Blight Legion',   emoji: '☠️', color: '#6a1b9a' }
+    },
+    UNITS: {
+      EMP_SCOUT:   { id: 'EMP_SCOUT',   faction: 'EMPIRE', emoji: '🥷', name: 'Shadow Scout',  cost: 100, buildTurns: 1, upkeep: 1, maxHp: 10, atk: 3, def: 2, maxMp: 14, role: 1, traits: ['WOODS_STRIDE'] },
+      EMP_GUARD:   { id: 'EMP_GUARD',   faction: 'EMPIRE', emoji: '💂', name: 'Royal Guard',   cost: 150, buildTurns: 1, upkeep: 1, maxHp: 14, atk: 4, def: 5, maxMp: 10, role: 1, traits: ['TOWN_DEFENDER'] },
+      EMP_PALADIN: { id: 'EMP_PALADIN', faction: 'EMPIRE', emoji: '🦸', name: 'Paladin',       cost: 350, buildTurns: 2, upkeep: 2, maxHp: 20, atk: 7, def: 7, maxMp: 8,  role: 2, traits: ['HOLY_AURA'] },
+      EMP_KNIGHT:  { id: 'EMP_KNIGHT',  faction: 'EMPIRE', emoji: '🏇', name: 'Heavy Knight',  cost: 400, buildTurns: 3, upkeep: 3, maxHp: 22, atk: 8, def: 6, maxMp: 12, role: 1, traits: ['CHARGE', 'NO_MOUNTAIN'] },
+      EMP_EAGLE:   { id: 'EMP_EAGLE',   faction: 'EMPIRE', emoji: '🦅', name: 'Giant Eagle',   cost: 600, buildTurns: 4, upkeep: 4, maxHp: 24, atk: 9, def: 6, maxMp: 16, role: 3, traits: ['FLYING'] },
+      SYL_PIXIE:   { id: 'SYL_PIXIE',   faction: 'SYLVAN', emoji: '🧚', name: 'Forest Pixie',  cost: 100, buildTurns: 1, upkeep: 1, maxHp: 8,  atk: 3, def: 3, maxMp: 14, role: 3, traits: ['FLYING'] },
+      SYL_ELF:     { id: 'SYL_ELF',     faction: 'SYLVAN', emoji: '🧝', name: 'Sylvan Archer', cost: 160, buildTurns: 1, upkeep: 1, maxHp: 12, atk: 5, def: 4, maxMp: 10, role: 2, traits: ['WOODS_MASTER'] },
+      SYL_TROLL:   { id: 'SYL_TROLL',   faction: 'SYLVAN', emoji: '🧌', name: 'Moss Troll',    cost: 360, buildTurns: 2, upkeep: 2, maxHp: 26, atk: 7, def: 6, maxMp: 8,  role: 1, traits: ['REGENERATE'] },
+      SYL_UNICORN: { id: 'SYL_UNICORN', faction: 'SYLVAN', emoji: '🦄', name: 'Unicorn',       cost: 420, buildTurns: 3, upkeep: 3, maxHp: 20, atk: 8, def: 7, maxMp: 14, role: 1, traits: ['WOODS_STRIDE', 'PLAINS_BONUS'] },
+      SYL_DRAGON:  { id: 'SYL_DRAGON',  faction: 'SYLVAN', emoji: '🐉', name: 'Emerald Dragon',cost: 750, buildTurns: 5, upkeep: 4, maxHp: 32, atk: 11,def: 9, maxMp: 16, role: 3, traits: ['FLYING', 'MOUNTAIN_HOME'] },
+      UND_BAT:     { id: 'UND_BAT',     faction: 'UNDEAD', emoji: '🦇', name: 'Dread Bat',     cost: 90,  buildTurns: 1, upkeep: 1, maxHp: 9,  atk: 4, def: 2, maxMp: 14, role: 3, traits: ['FLYING'] },
+      UND_SKEL:    { id: 'UND_SKEL',    faction: 'UNDEAD', emoji: '💀', name: 'Skeleton',      cost: 120, buildTurns: 1, upkeep: 1, maxHp: 13, atk: 4, def: 4, maxMp: 10, role: 1, traits: ['SNOW_WALKER'] },
+      UND_GHOUL:   { id: 'UND_GHOUL',   faction: 'UNDEAD', emoji: '🧟', name: 'Rotting Ghoul', cost: 300, buildTurns: 2, upkeep: 2, maxHp: 24, atk: 7, def: 6, maxMp: 8,  role: 1, traits: ['SNOW_BONUS'] },
+      UND_WOLF:    { id: 'UND_WOLF',    faction: 'UNDEAD', emoji: '🐺', name: 'Dire Wolf',     cost: 350, buildTurns: 2, upkeep: 3, maxHp: 18, atk: 8, def: 5, maxMp: 14, role: 1, traits: ['PACK_HUNTER'] },
+      UND_DEMON:   { id: 'UND_DEMON',   faction: 'UNDEAD', emoji: '👹', name: 'Abyssal Oni',   cost: 700, buildTurns: 4, upkeep: 4, maxHp: 30, atk: 11,def: 8, maxMp: 10, role: 2, traits: ['MOUNTAIN_STRIDE'] },
+      NEU_MILITIA: { id: 'NEU_MILITIA', faction: 'NEUTRAL', emoji: '🛡️', name: 'Town Militia', cost: 0,   buildTurns: 1, upkeep: 0, maxHp: 10, atk: 3, def: 4, maxMp: 0,  role: 1, traits: ['TOWN_DEFENDER'] }
+    },
+    XP_LEVELS: [
+      { level: 1, xp: 0,   atk: 0, def: 0, hp: 0, badge: '' },
+      { level: 2, xp: 25,  atk: 1, def: 1, hp: 2, badge: '•' },
+      { level: 3, xp: 60,  atk: 2, def: 2, hp: 4, badge: '••' },
+      { level: 4, xp: 110, atk: 3, def: 3, hp: 6, badge: '★' }
+    ],
+    DIFFICULTIES: {
+      easy:   { id: 'easy',   label: 'Easy',   emoji: '🌱', desc: 'Passive AI that garrisons towns and expands slowly',        aiMaxBand: 2, aiBuyChance: 0.45, aiUpgradeGold: 700, aiSkipChance: 0.40, aiGarrison: 'all' },
+      normal: { id: 'normal', label: 'Normal', emoji: '⚔️', desc: 'Balanced AI that defends its capital and expands steadily', aiMaxBand: 3, aiBuyChance: 0.80, aiUpgradeGold: 500, aiSkipChance: 0.15, aiGarrison: 'capital' },
+      hard:   { id: 'hard',   label: 'Hard',   emoji: '🔥', desc: 'Aggressive AI with full bands and relentless expansion',    aiMaxBand: 4, aiBuyChance: 1.0,  aiUpgradeGold: 420, aiSkipChance: 0,    aiGarrison: 'none' }
+    }
+  };
+
+  // =========================================================================
+  // 2. HOOKS BUS
+  // =========================================================================
+  const Hooks = {
+    _listeners: {},
+    on(event, fn) {
+      (this._listeners[event] ??= []).push(fn);
+      return () => {
+        this._listeners[event] = (this._listeners[event] || []).filter(f => f !== fn);
+      };
+    },
+    emit(event, ctx) {
+      for (const fn of (this._listeners[event] || [])) fn(ctx);
+      return ctx;
+    }
+  };
+
+  Hooks.on('onMoveCost', (ctx) => {
+    const def = CONFIG.UNITS[ctx.unit.type];
+    if (!def) return;
+    if (def.traits.includes('FLYING')) { ctx.cost = 2; return; }
+    if (def.traits.includes('NO_MOUNTAIN') && ctx.tile.terrain === 'MOUNTAINS' && !ctx.tile.hasTown) { ctx.cost = Infinity; return; }
+    if (def.traits.includes('WOODS_STRIDE') && ctx.tile.terrain === 'WOODS') ctx.cost = Math.max(1, ctx.cost - 1);
+    if (def.traits.includes('SNOW_WALKER') && ctx.tile.terrain === 'SNOW') ctx.cost = 2;
+    if (def.traits.includes('MOUNTAIN_STRIDE') && ctx.tile.terrain === 'MOUNTAINS') ctx.cost = 2;
+  });
+
+  Hooks.on('onCalculateCombatStats', (ctx) => {
+    const def = CONFIG.UNITS[ctx.unit.type];
+    if (!def) return;
+    const terrain = ctx.tile.hasTown ? 'TOWN' : ctx.tile.terrain;
+    if (def.traits.includes('TOWN_DEFENDER') && ctx.tile.hasTown && ctx.isDefender) ctx.def += 2;
+    if (def.traits.includes('HOLY_AURA') || ctx.allies.some(a => a.hp > 0 && CONFIG.UNITS[a.type]?.traits.includes('HOLY_AURA'))) {
+      if (ctx.enemies.some(e => e.hp > 0 && e.owner === 'UNDEAD')) ctx.atk += 1;
+    }
+    if (def.traits.includes('CHARGE') && terrain === 'PLAINS' && !ctx.isDefender && ctx.round === 1) ctx.atk += 2;
+    if (def.traits.includes('WOODS_MASTER') && terrain === 'WOODS') { ctx.atk += 1; ctx.def += 1; }
+    if (def.traits.includes('PLAINS_BONUS') && terrain === 'PLAINS') ctx.atk += 1;
+    if (def.traits.includes('MOUNTAIN_HOME') && terrain === 'MOUNTAINS') ctx.def += 2;
+    if (def.traits.includes('SNOW_BONUS') && terrain === 'SNOW') { ctx.atk += 2; ctx.def += 2; }
+    if (def.traits.includes('PACK_HUNTER')) {
+      const wolves = ctx.allies.filter(a => a.hp > 0 && a.id !== ctx.unit.id && a.type === 'UND_WOLF').length;
+      ctx.atk += wolves;
+    }
+  });
+
+  Hooks.on('onCombatInit', (ctx) => {
+    if (ctx.defenderTile && ctx.defenderTile.hasTown) ctx.defenderStrikesFirst = true;
+  });
+
+  Hooks.on('onTurnStart', (ctx) => {
+    const { state, factionId } = ctx;
+    for (const u of state.units) {
+      if (u.owner !== factionId) continue;
+      const def = CONFIG.UNITS[u.type];
+      u.mp = def.maxMp;
+      u.waited = false;
+      if (def.traits.includes('REGENERATE')) {
+        u.hp = Math.min(getUnitMaxHp(u), u.hp + 2);
+      }
+    }
+  });
+
+  // =========================================================================
+  // 3. UTILITIES & PURE STATE HELPERS
+  // =========================================================================
+  let nextUid = 1;
+  function genId(prefix = 'id') {
+    return `${prefix}_${nextUid++}_${Math.floor(Math.random() * 10000)}`;
+  }
+
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function() {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function getUnitLevelInfo(unit) {
+    let lvl = CONFIG.XP_LEVELS[0];
+    for (const row of CONFIG.XP_LEVELS) {
+      if (unit.xp >= row.xp) lvl = row;
+    }
+    return lvl;
+  }
+
+  function getUnitMaxHp(unit) {
+    return CONFIG.UNITS[unit.type].maxHp + getUnitLevelInfo(unit).hp;
+  }
+
+  function getTile(state, x, y) {
+    if (x < 0 || y < 0 || x >= state.map.width || y >= state.map.height) return null;
+    return state.map.tiles[y * state.map.width + x];
+  }
+
+  function getTownAt(state, x, y) {
+    return state.towns.find(t => t.x === x && t.y === y) || null;
+  }
+
+  function getUnitsAt(state, x, y) {
+    return state.units.filter(u => u.x === x && u.y === y);
+  }
+
+  function createUnit(type, owner, x, y, bandId = null) {
+    const def = CONFIG.UNITS[type];
+    return {
+      id: genId('u'), type, owner, x, y,
+      hp: def.maxHp, mp: def.maxMp, xp: 0, bandId, waited: false
+    };
+  }
+  function getDifficulty(state) {
+    return CONFIG.DIFFICULTIES[(state && state.difficulty) || 'normal'] || CONFIG.DIFFICULTIES.normal;
+  }
+
+  // =========================================================================
+  // 4. MAP GENERATOR
+  // =========================================================================
+  const TOWN_NAMES = [
+    'Oakenshield', 'Frostpeak', 'Silverkeep', 'Briarwood', 'Ravenrock',
+    'Sunhaven', 'Ironforge', 'Mistvale', 'Shadowfen', 'Goldcrest',
+    'Starfall', 'Thornwatch', 'Highgard', 'Ashford', 'Deepwell', 'Cragmoor'
+  ];
+
+  const MapGen = {
+    generate(humanFaction = 'EMPIRE', seed = Date.now(), difficulty = 'normal') {
+      const diff = CONFIG.DIFFICULTIES[difficulty] || CONFIG.DIFFICULTIES.normal;
+      const rng = mulberry32(seed);
+      const w = CONFIG.MAP_WIDTH;
+      const h = CONFIG.MAP_HEIGHT;
+
+      const grid = Array.from({ length: h }, () => Array.from({ length: w }, () => rng()));
+      const smooth = (x, y) => {
+        let sum = 0, count = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const nx = Math.max(0, Math.min(w - 1, x + dx));
+            const ny = Math.max(0, Math.min(h - 1, y + dy));
+            sum += grid[ny][nx]; count++;
+          }
+        }
+        return sum / count;
+      };
+
+      const tiles = [];
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const elev = smooth(x, y);
+          const lat = Math.abs((y / (h - 1)) - 0.5) * 2;
+          let terrain = 'PLAINS';
+          if (elev > 0.66) terrain = 'MOUNTAINS';
+          else if (lat > 0.78 || (elev > 0.58 && lat > 0.55)) terrain = 'SNOW';
+          else if (elev > 0.45) terrain = 'WOODS';
+          tiles.push({ x, y, terrain, hasTown: false });
+        }
+      }
+
+      const targetTowns = CONFIG.TOWN_COUNT_MIN + Math.floor(rng() * (CONFIG.TOWN_COUNT_MAX - CONFIG.TOWN_COUNT_MIN + 1));
+      const towns = [];
+      let attempts = 0;
+      while (towns.length < targetTowns && attempts < 1000) {
+        attempts++;
+        const x = 1 + Math.floor(rng() * (w - 2));
+        const y = 1 + Math.floor(rng() * (h - 2));
+        const tile = tiles[y * w + x];
+        if (tile.terrain === 'MOUNTAINS') continue;
+        if (towns.some(t => Math.abs(t.x - x) + Math.abs(t.y - y) < CONFIG.MIN_TOWN_DIST)) continue;
+        tile.hasTown = true;
+        towns.push({
+          id: genId('t'), name: TOWN_NAMES[towns.length % TOWN_NAMES.length],
+          x, y, owner: null, income: CONFIG.TOWN_INCOME, prodUnit: null, nextProdUnit: null, turnsLeft: 0, unlockedUnits: []
+        });
+      }
+
+      const factionIds = ['EMPIRE', 'SYLVAN', 'UNDEAD'];
+      for (let i = factionIds.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [factionIds[i], factionIds[j]] = [factionIds[j], factionIds[i]];
+      }
+      const startTowns = [];
+      if (towns.length >= 3) {
+        startTowns.push(towns[0]);
+        while (startTowns.length < 3) {
+          let best = null, bestDist = -1;
+          for (const t of towns) {
+            if (startTowns.includes(t)) continue;
+            const minD = Math.min(...startTowns.map(s => Math.hypot(s.x - t.x, s.y - t.y)));
+            if (minD > bestDist) { bestDist = minD; best = t; }
+          }
+          if (best) startTowns.push(best); else break;
+        }
+      }
+
+      const units = [];
+      const starters = {
+        EMPIRE: ['EMP_SCOUT', 'EMP_GUARD'],
+        SYLVAN: ['SYL_PIXIE', 'SYL_ELF'],
+        UNDEAD: ['UND_BAT', 'UND_SKEL']
+      };
+
+      startTowns.forEach((town, idx) => {
+        const fId = factionIds[idx];
+        town.owner = fId;
+        const [t1, t2] = starters[fId];
+        town.prodUnit = t2;
+        town.nextProdUnit = null;
+        town.unlockedUnits = [t2];
+        town.turnsLeft = CONFIG.UNITS[t2].buildTurns;
+        units.push(createUnit(t1, fId, town.x, town.y));
+        units.push(createUnit(t2, fId, town.x, town.y));
+      });
+      towns.forEach(town => {
+        if (town.owner === null) units.push(createUnit('NEU_MILITIA', 'NEUTRAL', town.x, town.y));
+      });
+
+      if (towns.length > 1) {
+        const visited = new Set([`${towns[0].x},${towns[0].y}`]);
+        const queue = [{ x: towns[0].x, y: towns[0].y }];
+        while (queue.length) {
+          const cur = queue.shift();
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              if (dx === 0 && dy === 0) continue;
+              const nx = cur.x + dx, ny = cur.y + dy;
+              if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+              const key = `${nx},${ny}`;
+              if (visited.has(key)) continue;
+              const tile = tiles[ny * w + nx];
+              if (tile.terrain === 'MOUNTAINS' && !tile.hasTown) continue;
+              visited.add(key);
+              queue.push({ x: nx, y: ny });
+            }
+          }
+        }
+        for (const t of towns) {
+          if (!visited.has(`${t.x},${t.y}`)) {
+            let cx = t.x, cy = t.y;
+            while (cx !== towns[0].x || cy !== towns[0].y) {
+              tiles[cy * w + cx].terrain = 'PLAINS';
+              if (cx < towns[0].x) cx++; else if (cx > towns[0].x) cx--;
+              if (cy < towns[0].y) cy++; else if (cy > towns[0].y) cy--;
+            }
+          }
+        }
+      }
+
+      return {
+        version: 1, turn: 1, activeFaction: humanFaction, humanFaction, difficulty: diff.id, winner: null,
+        factions: {
+          EMPIRE: { gold: 150, alive: true },
+          SYLVAN: { gold: 150, alive: true },
+          UNDEAD: { gold: 150, alive: true }
+        },
+        map: { width: w, height: h, tiles },
+        towns, units
+      };
+    }
+  };
+
+  // =========================================================================
+  // 5. MOVEMENT & BANDING SYSTEM
+  // =========================================================================
+  const MovementSystem = {
+    getMoveGroup(state, unit) {
+      if (!unit) return [];
+      if (unit.bandId) return state.units.filter(u => u.bandId === unit.bandId && u.owner === unit.owner);
+      return [unit];
+    },
+    getGroupMp(group) {
+      return group.length ? Math.min(...group.map(u => u.mp)) : 0;
+    },
+    getStepCost(state, group, tile) {
+      let maxCost = 0;
+      for (const u of group) {
+        const base = tile.hasTown ? CONFIG.TERRAIN.TOWN.moveCost : CONFIG.TERRAIN[tile.terrain].moveCost;
+        const ctx = Hooks.emit('onMoveCost', { unit: u, tile, cost: base });
+        if (ctx.cost === Infinity) return Infinity;
+        if (ctx.cost > maxCost) maxCost = ctx.cost;
+      }
+      return maxCost;
+    },
+    getReachableTiles(state, group) {
+      const start = group[0];
+      const maxMp = this.getGroupMp(group);
+      const dist = new Map();
+      const key = (x, y) => `${x},${y}`;
+      dist.set(key(start.x, start.y), 0);
+      const pq = [{ x: start.x, y: start.y, cost: 0 }];
+      const reachable = new Map();
+
+      while (pq.length) {
+        pq.sort((a, b) => a.cost - b.cost);
+        const cur = pq.shift();
+        const curKey = key(cur.x, cur.y);
+        if (cur.cost > dist.get(curKey)) continue;
+
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const nx = cur.x + dx, ny = cur.y + dy;
+            const tile = getTile(state, nx, ny);
+            if (!tile) continue;
+            const unitsHere = getUnitsAt(state, nx, ny);
+            const hasEnemy = unitsHere.some(u => u.owner !== start.owner);
+            const town = getTownAt(state, nx, ny);
+            if (hasEnemy || (town && town.owner !== start.owner)) continue;
+            const stepCost = this.getStepCost(state, group, tile);
+            if (stepCost === Infinity) continue;
+            const newCost = cur.cost + stepCost;
+            if (newCost <= maxMp) {
+              const nKey = key(nx, ny);
+              if (!dist.has(nKey) || newCost < dist.get(nKey)) {
+                dist.set(nKey, newCost);
+                pq.push({ x: nx, y: ny, cost: newCost });
+                if (unitsHere.length + group.length <= CONFIG.MAX_STACK) {
+                  reachable.set(nKey, { x: nx, y: ny, cost: newCost });
+                }
+              }
+            }
+          }
+        }
+      }
+      return { reachable };
+    },
+    moveGroup(state, group, destX, destY) {
+      const { reachable } = this.getReachableTiles(state, group);
+      const info = reachable.get(`${destX},${destY}`);
+      if (!info) return false;
+      const now = typeof performance !== 'undefined' ? performance.now() : 0;
+      for (const u of group) {
+        if (typeof animatingUnits !== 'undefined') {
+          animatingUnits.set(u.id, { fromX: u.x, fromY: u.y, toX: destX, toY: destY, start: now, duration: 200 });
+        }
+        u.x = destX; u.y = destY; u.mp = Math.max(0, u.mp - info.cost);
+      }
+      if (typeof startAnimLoop === 'function') startAnimLoop();
+      return true;
+    },
+    bandUnitsAt(state, x, y, owner) {
+      const units = getUnitsAt(state, x, y).filter(u => u.owner === owner);
+      if (units.length < 2) return null;
+      const bandId = genId('b');
+      for (const u of units) u.bandId = bandId;
+      return bandId;
+    },
+    disbandGroup(state, group) {
+      for (const u of group) u.bandId = null;
+    }
+  };
+
+  // =========================================================================
+  // 6. COMBAT SYSTEM
+  // =========================================================================
+  const CombatSystem = {
+    isAdjacent(x1, y1, x2, y2) {
+      return Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2)) === 1;
+    },
+    rollDice(count, target) {
+      let hits = 0; const rolls = [];
+      for (let i = 0; i < count; i++) {
+        const r = 1 + Math.floor(Math.random() * 6);
+        rolls.push(r); if (r >= target) hits++;
+      }
+      return { hits, rolls };
+    },
+    getEffectiveStats(unit, tile, allies, enemies, isDefender, round = 1) {
+      const def = CONFIG.UNITS[unit.type];
+      const lvl = getUnitLevelInfo(unit);
+      const tMod = CONFIG.TERRAIN_MODS[tile.hasTown ? 'TOWN' : tile.terrain];
+      const ctx = {
+        unit, tile, allies, enemies, isDefender, round,
+        atk: def.atk + lvl.atk + tMod.defaultAtk,
+        def: def.def + lvl.def + tMod.defaultDef
+      };
+      Hooks.emit('onCalculateCombatStats', ctx);
+      return { atk: Math.max(1, ctx.atk), def: Math.max(1, ctx.def) };
+    },
+    resolveCombat(state, attackerGroup, defX, defY) {
+      const defenderTile = getTile(state, defX, defY);
+      const town = getTownAt(state, defX, defY);
+      const defenders = getUnitsAt(state, defX, defY);
+      if (defenders.length === 0 && !town) return null;
+      for (const d of defenders) if (d.type === 'NEU_MILITIA') d.revealed = true;
+      for (const u of attackerGroup) u.mp = Math.max(0, u.mp - Math.min(2, u.mp));
+
+      const A = [...attackerGroup].sort((a, b) => CONFIG.UNITS[a.type].role - CONFIG.UNITS[b.type].role);
+      const D = [...defenders].sort((a, b) => CONFIG.UNITS[a.type].role - CONFIG.UNITS[b.type].role);
+      const initCtx = Hooks.emit('onCombatInit', { attackerBand: A, defenderBand: D, defenderTile, defenderStrikesFirst: false });
+
+      const log = [];
+      if (initCtx.defenderStrikesFirst) log.push('🏰 Town Defense: Defender strikes first (Round 1)!');
+
+      let ai = 0, di = 0, round = 0;
+      while (ai < A.length && di < D.length) {
+        round++;
+        const atkUnit = A[ai], defUnit = D[di];
+        const atkStats = this.getEffectiveStats(atkUnit, defenderTile, A, D, false, round);
+        const defStats = this.getEffectiveStats(defUnit, defenderTile, D, A, true, round);
+
+        const rollStrike = (striker, strikerStats, targetStats) => {
+          const atkRoll = this.rollDice(strikerStats.atk, 4);
+          const defRoll = this.rollDice(targetStats.def, 5);
+          const dmg = Math.max(1, atkRoll.hits - defRoll.hits);
+          return { dmg, atkRoll, defRoll };
+        };
+
+        const applyStrike = (striker, target, isDefStrike, res) => {
+          target.hp = Math.max(0, target.hp - res.dmg);
+          log.push(`R${round}: ${CONFIG.UNITS[striker.type].emoji}→${CONFIG.UNITS[target.type].emoji} (${res.atkRoll.hits} hits vs ${res.defRoll.hits} blk) = ${res.dmg} dmg`);
+          Hooks.emit('onCombatRound', { round, striker, target, isDefender: isDefStrike, dmg: res.dmg, atkRoll: res.atkRoll, defRoll: res.defRoll });
+        };
+
+        if (round === 1 && initCtx.defenderStrikesFirst) {
+          applyStrike(defUnit, atkUnit, true, rollStrike(defUnit, defStats, atkStats));
+          if (atkUnit.hp > 0) {
+            applyStrike(atkUnit, defUnit, false, rollStrike(atkUnit, atkStats, defStats));
+          }
+        } else {
+          // Simultaneous exchange
+          const atkRes = rollStrike(atkUnit, atkStats, defStats);
+          const defRes = rollStrike(defUnit, defStats, atkStats);
+          applyStrike(atkUnit, defUnit, false, atkRes);
+          applyStrike(defUnit, atkUnit, true, defRes);
+        }
+
+        if (atkUnit.hp <= 0) { log.push(`💀 ${CONFIG.UNITS[atkUnit.type].name} defeated!`); this.awardXp(defUnit, 15, log); this.removeUnit(state, atkUnit, defUnit, defenderTile); ai++; }
+        if (defUnit.hp <= 0) { log.push(`💀 ${CONFIG.UNITS[defUnit.type].name} defeated!`); this.awardXp(atkUnit, 15, log); this.removeUnit(state, defUnit, atkUnit, defenderTile); di++; }
+      }
+
+      for (const u of A) if (u.hp > 0) this.awardXp(u, 10, log);
+      for (const u of D) if (u.hp > 0) this.awardXp(u, 10, log);
+
+      const remainingDefenders = D.filter(u => u.hp > 0);
+      const survivingAttackers = A.filter(u => u.hp > 0);
+      if (round >= 20 && remainingDefenders.length > 0 && survivingAttackers.length > 0) {
+        log.push('⏸️ Stalemate after 20 rounds! Attack with more units.');
+      }
+      let captured = false;
+
+      if (remainingDefenders.length === 0 && survivingAttackers.length > 0) {
+        for (const u of survivingAttackers) { u.x = defX; u.y = defY; }
+        if (town && town.owner !== survivingAttackers[0].owner) {
+          const oldOwner = town.owner;
+          town.owner = survivingAttackers[0].owner;
+          town.prodUnit = null; town.nextProdUnit = null; town.turnsLeft = 0; captured = true;
+          log.push(`🚩 ${town.name} captured by ${CONFIG.FACTIONS[town.owner].name}!`);
+          Hooks.emit('onTownCaptured', { town, oldOwner, newOwner: town.owner, state });
+          WinConditionSystem.check(state);
+        }
+      }
+      return { log, captured, survivingAttackers, remainingDefenders };
+    },
+    awardXp(unit, amount, log) {
+      if (unit.owner === 'NEUTRAL') return;
+      const oldLvl = getUnitLevelInfo(unit).level;
+      unit.xp += amount;
+      const newLvlInfo = getUnitLevelInfo(unit);
+      Hooks.emit('onUnitGainXP', { unit, amount });
+      if (newLvlInfo.level > oldLvl) {
+        unit.hp = Math.min(getUnitMaxHp(unit), unit.hp + 2);
+        log.push(`⭐ ${CONFIG.UNITS[unit.type].name} reached Level ${newLvlInfo.level}!`);
+      }
+    },
+    removeUnit(state, unit, killer, tile) {
+      state.units = state.units.filter(u => u.id !== unit.id);
+      if (unit.bandId) {
+        const remaining = state.units.filter(u => u.bandId === unit.bandId);
+        if (remaining.length === 1) remaining[0].bandId = null;
+      }
+      Hooks.emit('onUnitDeath', { unit, killer, tile });
+    }
+  };
+
+  // =========================================================================
+  // 7. ECONOMY & WIN CONDITION SYSTEMS
+  // =========================================================================
+  const EconomySystem = {
+    getFactionIncome(state, factionId) {
+      return state.towns.filter(t => t.owner === factionId).reduce((s, t) => s + t.income, 0);
+    },
+    getFactionUpkeep(state, factionId) {
+      return state.units.filter(u => u.owner === factionId).reduce((s, u) => s + (CONFIG.UNITS[u.type].upkeep || 0), 0);
+    },
+    getFactionNetIncome(state, factionId) {
+      return this.getFactionIncome(state, factionId) - this.getFactionUpkeep(state, factionId);
+    },
+    pauseProduction(state, town) {
+      town.prodUnit = null;
+      town.nextProdUnit = null;
+      town.turnsLeft = 0;
+    },
+    buyProduction(state, town, unitType) {
+      const def = CONFIG.UNITS[unitType];
+      if (!def || town.owner !== def.faction) return false;
+      const unlocked = (town.unlockedUnits ??= []);
+      const isUnlocked = unlocked.includes(unitType);
+      if (!isUnlocked) {
+        const faction = state.factions[town.owner];
+        if (faction.gold < def.cost) return false;
+        faction.gold -= def.cost;
+        unlocked.push(unitType);
+      }
+      const curDef = town.prodUnit ? CONFIG.UNITS[town.prodUnit] : null;
+      const canSwitchNow = !curDef || town.turnsLeft >= curDef.buildTurns;
+      if (canSwitchNow) {
+        town.prodUnit = unitType;
+        town.nextProdUnit = null;
+        town.turnsLeft = def.buildTurns;
+      } else if (town.prodUnit === unitType) {
+        town.nextProdUnit = null;
+      } else {
+        town.nextProdUnit = unitType;
+      }
+      return true;
+    },
+    processTurnStart(state, factionId) {
+      const ownedTowns = state.towns.filter(t => t.owner === factionId);
+      let income = 0;
+      for (const town of ownedTowns) {
+        income += town.income;
+        if (town.prodUnit) {
+          town.turnsLeft--;
+          if (town.turnsLeft <= 0) {
+            const spawned = this.spawnProducedUnit(state, town);
+            if (spawned) {
+              if (town.nextProdUnit) {
+                town.prodUnit = town.nextProdUnit;
+                town.nextProdUnit = null;
+              }
+              town.turnsLeft = CONFIG.UNITS[town.prodUnit].buildTurns;
+            } else {
+              town.turnsLeft = 0;
+            }
+          }
+        }
+      }
+      let upkeep = this.getFactionUpkeep(state, factionId);
+      state.factions[factionId].gold += (income - upkeep);
+      let disbanded = 0;
+      if (state.factions[factionId].gold < 0) {
+        state.factions[factionId].gold = 0;
+        while (upkeep > income) {
+          const mine = state.units.filter(u => u.owner === factionId && (CONFIG.UNITS[u.type].upkeep || 0) > 0);
+          if (mine.length === 0) break;
+          mine.sort((a, b) => (CONFIG.UNITS[b.type].upkeep - CONFIG.UNITS[a.type].upkeep) || (a.hp - b.hp));
+          const victim = mine[0];
+          state.units = state.units.filter(u => u.id !== victim.id);
+          if (victim.bandId) {
+            const remaining = state.units.filter(u => u.bandId === victim.bandId);
+            if (remaining.length === 1) remaining[0].bandId = null;
+          }
+          upkeep -= CONFIG.UNITS[victim.type].upkeep || 0;
+          disbanded++;
+        }
+      }
+      Hooks.emit('onTurnStart', { state, factionId, income, upkeep, disbanded });
+      return { income, upkeep, disbanded };
+    },
+    spawnProducedUnit(state, town) {
+      if (getUnitsAt(state, town.x, town.y).length < CONFIG.MAX_STACK) {
+        state.units.push(createUnit(town.prodUnit, town.owner, town.x, town.y));
+        return true;
+      }
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const tile = getTile(state, town.x + dx, town.y + dy);
+          if (!tile || tile.terrain === 'MOUNTAINS') continue;
+          const here = getUnitsAt(state, tile.x, tile.y);
+          if (here.some(u => u.owner !== town.owner)) continue;
+          if (here.length < CONFIG.MAX_STACK) {
+            state.units.push(createUnit(town.prodUnit, town.owner, tile.x, tile.y));
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+  };
+
+  const WinConditionSystem = {
+    check(state) {
+      for (const fId of Object.keys(state.factions)) {
+        if (!state.factions[fId].alive) continue;
+        if (state.towns.filter(t => t.owner === fId).length === 0) {
+          state.factions[fId].alive = false;
+          state.units = state.units.filter(u => u.owner !== fId);
+          Hooks.emit('onFactionEliminated', { factionId: fId, state });
+        }
+      }
+      const alive = Object.keys(state.factions).filter(f => state.factions[f].alive);
+      if (alive.length === 1) state.winner = alive[0];
+    }
+  };
+
+  // =========================================================================
+  // 8. AI CONTROLLER
+  // =========================================================================
+  const AIController = {
+    async runTurn(state, factionId, delayMs = 0, onStep = null) {
+      if (!state.factions[factionId].alive || state.winner) return;
+      const diff = getDifficulty(state);
+      const pause = () => delayMs > 0 ? new Promise(r => setTimeout(r, delayMs)) : null;
+      const myTowns = state.towns.filter(t => t.owner === factionId);
+      const capital = myTowns[0] || null;
+      const netIncome = EconomySystem.getFactionNetIncome(state, factionId);
+      const roster = Object.values(CONFIG.UNITS).filter(u => u.faction === factionId);
+      for (const town of myTowns) {
+        if (netIncome <= 2 && town.prodUnit && (!capital || town.id !== capital.id)) {
+          EconomySystem.pauseProduction(state, town);
+          continue;
+        }
+        const wantsBuy = !town.prodUnit
+          ? (netIncome > 4 && Math.random() < diff.aiBuyChance)
+          : (!town.nextProdUnit && state.factions[factionId].gold > diff.aiUpgradeGold);
+        if (wantsBuy) {
+          const unlocked = town.unlockedUnits || [];
+          const affordable = roster
+            .filter(u => (unlocked.includes(u.id) || u.cost <= state.factions[factionId].gold) && u.id !== town.prodUnit && u.id !== town.nextProdUnit)
+            .sort((a, b) => b.cost - a.cost);
+          if (affordable.length > 0) EconomySystem.buyProduction(state, town, affordable[0].id);
+        }
+      }
+      const processedCoords = new Set();
+      for (const u of [...state.units]) {
+        if (u.owner !== factionId || u.bandId) continue;
+        const key = `${u.x},${u.y}`;
+        if (processedCoords.has(key)) continue;
+        processedCoords.add(key);
+        const coLocated = getUnitsAt(state, u.x, u.y).filter(x => x.owner === factionId && !x.bandId);
+        if (coLocated.length >= 2) {
+          const bandId = genId('b');
+          coLocated.slice(0, diff.aiMaxBand).forEach(x => { x.bandId = bandId; });
+        }
+      }
+      const actedIds = new Set();
+      for (const u of [...state.units]) {
+        if (!state.units.includes(u) || u.owner !== factionId || actedIds.has(u.id)) continue;
+        const group = MovementSystem.getMoveGroup(state, u);
+        group.forEach(m => actedIds.add(m.id));
+        if (MovementSystem.getGroupMp(group) <= 0) continue;
+        const adjTarget = this.findAdjacentTarget(state, u.x, u.y, factionId);
+        if (adjTarget) {
+          CombatSystem.resolveCombat(state, group, adjTarget.x, adjTarget.y);
+          if (onStep) onStep();
+          if (delayMs > 0) await pause();
+          if (state.winner) return;
+          continue;
+        }
+        // Hold garrison on owned towns based on difficulty
+        if (diff.aiGarrison !== 'none') {
+          const hereTown = getTownAt(state, u.x, u.y);
+          const shouldGarrison = hereTown && hereTown.owner === factionId &&
+            (diff.aiGarrison === 'all' || (diff.aiGarrison === 'capital' && capital && hereTown.id === capital.id));
+          if (shouldGarrison) {
+            const friendlyHere = getUnitsAt(state, u.x, u.y).filter(x => x.owner === factionId);
+            if (friendlyHere.length <= group.length) continue;
+          }
+        }
+        if (diff.aiSkipChance > 0 && Math.random() < diff.aiSkipChance) continue;
+        const target = this.pickTarget(state, u.x, u.y, factionId);
+        if (!target) continue;
+        const { reachable } = MovementSystem.getReachableTiles(state, group);
+        let bestTile = null, bestDist = Math.hypot(target.x - u.x, target.y - u.y);
+        for (const tile of reachable.values()) {
+          const d = Math.hypot(target.x - tile.x, target.y - tile.y);
+          if (d < bestDist) { bestDist = d; bestTile = tile; }
+        }
+        if (bestTile) {
+          MovementSystem.moveGroup(state, group, bestTile.x, bestTile.y);
+          if (onStep) onStep();
+          if (delayMs > 0) await pause();
+          const adjAfter = this.findAdjacentTarget(state, bestTile.x, bestTile.y, factionId);
+          if (adjAfter && MovementSystem.getGroupMp(group) >= 1) {
+            CombatSystem.resolveCombat(state, group, adjAfter.x, adjAfter.y);
+            if (onStep) onStep();
+            if (delayMs > 0) await pause();
+            if (state.winner) return;
+          }
+        }
+      }
+    },
+    findAdjacentTarget(state, x, y, factionId) {
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = x + dx, ny = y + dy;
+          const enemies = getUnitsAt(state, nx, ny).filter(u => u.owner !== factionId);
+          const town = getTownAt(state, nx, ny);
+          if (enemies.length > 0 || (town && town.owner !== factionId)) return { x: nx, y: ny };
+        }
+      }
+      return null;
+    },
+    pickTarget(state, x, y, factionId) {
+      let best = null, bestScore = -Infinity;
+      for (const t of state.towns) {
+        if (t.owner === factionId) continue;
+        const score = (t.owner === null ? 80 : 100) - Math.hypot(t.x - x, t.y - y) * 4;
+        if (score > bestScore) { bestScore = score; best = t; }
+      }
+      for (const u of state.units) {
+        if (u.owner === factionId || u.owner === 'NEUTRAL') continue;
+        const score = 60 - Math.hypot(u.x - x, u.y - y) * 4;
+        if (score > bestScore) { bestScore = score; best = u; }
+      }
+      return best;
+    }
+  };
+
+  // =========================================================================
+  // 9. STORAGE SYSTEM
+  // =========================================================================
+  const StorageSystem = {
+    save(state, slot = 'autosave') {
+      try { localStorage.setItem(`emoji_warlords_${slot}`, JSON.stringify(state)); return true; } catch (e) { return false; }
+    },
+    load(slot = 'autosave') {
+      try { const raw = localStorage.getItem(`emoji_warlords_${slot}`); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
+    }
+  };
+
+  // =========================================================================
+  // 10. EMBEDDED UNIT TEST SUITE
+  // =========================================================================
+  const TestRunner = {
+    runAll() {
+      const tests = [
+        ['test_map_generation_connectivity', this.test_map_generation_connectivity],
+        ['test_terrain_movement_and_traits', this.test_terrain_movement_and_traits],
+        ['test_banding_and_disbanding', this.test_banding_and_disbanding],
+        ['test_town_first_strike_combat', this.test_town_first_strike_combat],
+        ['test_xp_and_leveling', this.test_xp_and_leveling],
+        ['test_economy_and_production_loop', this.test_economy_and_production_loop],
+        ['test_faction_elimination_and_victory', this.test_faction_elimination_and_victory],
+        ['test_save_load_roundtrip', this.test_save_load_roundtrip],
+        ['test_mixed_band_reachability_and_stack_cap', this.test_mixed_band_reachability_and_stack_cap],
+        ['test_ai_turn_execution', this.test_ai_turn_execution],
+        ['test_difficulty_levels', this.test_difficulty_levels],
+        ['test_town_blueprints_and_queued_switch', this.test_town_blueprints_and_queued_switch],
+        ['test_upkeep_and_bankruptcy', this.test_upkeep_and_bankruptcy],
+        ['test_neutral_militia_no_respawn', this.test_neutral_militia_no_respawn]
+      ];
+      return tests.map(([name, fn]) => {
+        try { fn(); return { name, pass: true, error: null }; }
+        catch (err) { return { name, pass: false, error: err.message }; }
+      });
+    },
+    assert(cond, msg) { if (!cond) throw new Error(msg || 'Assertion failed'); },
+    test_map_generation_connectivity() {
+      const s = MapGen.generate('EMPIRE', 12345);
+      const owned = s.towns.filter(t => t.owner !== null);
+      TestRunner.assert(owned.length === 3, `Expected 3 starting towns, got ${owned.length}`);
+      for (let i = 0; i < s.towns.length; i++) {
+        for (let j = i + 1; j < s.towns.length; j++) {
+          const d = Math.abs(s.towns[i].x - s.towns[j].x) + Math.abs(s.towns[i].y - s.towns[j].y);
+          TestRunner.assert(d >= CONFIG.MIN_TOWN_DIST, `Towns ${i} and ${j} too close: ${d}`);
+        }
+      }
+    },
+    test_terrain_movement_and_traits() {
+      const s = MapGen.generate('EMPIRE', 1);
+      const woodsTile = { x: 0, y: 0, terrain: 'WOODS', hasTown: false };
+      const mtnTile = { x: 0, y: 0, terrain: 'MOUNTAINS', hasTown: false };
+      const scout = createUnit('EMP_SCOUT', 'EMPIRE', 0, 0);
+      const knight = createUnit('EMP_KNIGHT', 'EMPIRE', 0, 0);
+      const eagle = createUnit('EMP_EAGLE', 'EMPIRE', 0, 0);
+      TestRunner.assert(MovementSystem.getStepCost(s, [scout], woodsTile) === 2, 'Scout should pay 2 MP in Woods');
+      TestRunner.assert(MovementSystem.getStepCost(s, [knight], mtnTile) === Infinity, 'Knight blocked on Mountains');
+      TestRunner.assert(MovementSystem.getStepCost(s, [eagle], mtnTile) === 2, 'Eagle pays flat 2 MP');
+    },
+    test_banding_and_disbanding() {
+      const s = MapGen.generate('EMPIRE', 2);
+      s.units = [];
+      for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) getTile(s, x, y).terrain = 'PLAINS';
+      const u1 = createUnit('EMP_GUARD', 'EMPIRE', 1, 1);
+      const u2 = createUnit('EMP_SCOUT', 'EMPIRE', 1, 1);
+      const u3 = createUnit('EMP_EAGLE', 'EMPIRE', 1, 1);
+      s.units.push(u1, u2, u3);
+      MovementSystem.bandUnitsAt(s, 1, 1, 'EMPIRE');
+      const group = MovementSystem.getMoveGroup(s, u1);
+      TestRunner.assert(MovementSystem.getGroupMp(group) === 10, 'Band MP should be min (10)');
+      MovementSystem.moveGroup(s, group, 2, 1);
+      MovementSystem.disbandGroup(s, group);
+      TestRunner.assert(u1.mp === 8 && u2.mp === 12 && u3.mp === 14, 'Disbanded units retain unspent MP');
+    },
+    test_town_first_strike_combat() {
+      const s = MapGen.generate('EMPIRE', 3);
+      s.units = [];
+      const town = s.towns[0]; town.owner = 'UNDEAD';
+      const def = createUnit('UND_SKEL', 'UNDEAD', town.x, town.y);
+      const atk = createUnit('EMP_PALADIN', 'EMPIRE', town.x + 1, town.y);
+      s.units.push(def, atk);
+      let firstStrikerIsDef = null;
+      let allNonZeroDmg = true;
+      const unsub = Hooks.on('onCombatRound', (ctx) => {
+        if (firstStrikerIsDef === null) firstStrikerIsDef = ctx.isDefender;
+        if (ctx.dmg < 1) allNonZeroDmg = false;
+      });
+      CombatSystem.resolveCombat(s, [atk], town.x, town.y);
+      unsub();
+      TestRunner.assert(firstStrikerIsDef === true, 'Town defender must strike first');
+      TestRunner.assert(allNonZeroDmg, 'Every combat strike must deal at least 1 damage');
+    },
+    test_xp_and_leveling() {
+      const u = createUnit('EMP_GUARD', 'EMPIRE', 0, 0);
+      CombatSystem.awardXp(u, 25, []);
+      TestRunner.assert(getUnitLevelInfo(u).level === 2, 'Unit should reach Level 2 at 25 XP');
+      TestRunner.assert(getUnitMaxHp(u) === 16, 'Level 2 MaxHP should be 14 + 2 = 16');
+    },
+    test_economy_and_production_loop() {
+      const s = MapGen.generate('EMPIRE', 4);
+      const town = s.towns.find(t => t.owner === 'EMPIRE');
+      town.prodUnit = null; town.turnsLeft = 0; s.units = []; s.factions.EMPIRE.gold = 500;
+      const bought = EconomySystem.buyProduction(s, town, 'EMP_PALADIN');
+      TestRunner.assert(bought && s.factions.EMPIRE.gold === 150, 'Gold deducted');
+      EconomySystem.processTurnStart(s, 'EMPIRE');
+      EconomySystem.processTurnStart(s, 'EMPIRE');
+      TestRunner.assert(s.units.length === 1 && s.units[0].type === 'EMP_PALADIN', 'Paladin spawned after 2 turns');
+    },
+    test_faction_elimination_and_victory() {
+      const s = MapGen.generate('EMPIRE', 5);
+      s.towns.forEach(t => { t.owner = null; });
+      s.towns[0].owner = 'EMPIRE'; s.towns[1].owner = 'SYLVAN';
+      s.units = [createUnit('SYL_PIXIE', 'SYLVAN', 0, 0)];
+      s.towns[1].owner = 'EMPIRE';
+      WinConditionSystem.check(s);
+      TestRunner.assert(!s.factions.SYLVAN.alive, 'SYLVAN should be eliminated');
+      TestRunner.assert(s.units.length === 0, 'Eliminated faction units removed');
+      TestRunner.assert(s.winner === 'EMPIRE', 'EMPIRE should win');
+    },
+    test_save_load_roundtrip() {
+      const s = MapGen.generate('EMPIRE', 6);
+      s.factions.EMPIRE.gold = 777;
+      const json = JSON.stringify(s);
+      s.factions.EMPIRE.gold = 0;
+      const loaded = JSON.parse(json);
+      TestRunner.assert(loaded.factions.EMPIRE.gold === 777, 'Roundtrip preserves gold');
+      TestRunner.assert(loaded.towns.length === s.towns.length, 'Roundtrip preserves towns');
+    },
+    test_mixed_band_reachability_and_stack_cap() {
+      const s = MapGen.generate('EMPIRE', 7);
+      s.units = [];
+      for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) {
+        const t = getTile(s, x, y); t.terrain = 'PLAINS'; t.hasTown = false;
+      }
+      getTile(s, 1, 0).terrain = 'MOUNTAINS';
+      const eagle = createUnit('EMP_EAGLE', 'EMPIRE', 0, 0);
+      const knight = createUnit('EMP_KNIGHT', 'EMPIRE', 0, 0);
+      s.units.push(eagle, knight);
+      MovementSystem.bandUnitsAt(s, 0, 0, 'EMPIRE');
+      const group = MovementSystem.getMoveGroup(s, eagle);
+      const { reachable } = MovementSystem.getReachableTiles(s, group);
+      TestRunner.assert(!reachable.has('1,0'), 'Mixed FLYING + NO_MOUNTAIN band must not enter Mountains');
+      // Fill (0,1) with 5 friendly units so a 2-unit band exceeds MAX_STACK (6)
+      for (let i = 0; i < 5; i++) s.units.push(createUnit('EMP_SCOUT', 'EMPIRE', 0, 1));
+      const { reachable: r2 } = MovementSystem.getReachableTiles(s, group);
+      TestRunner.assert(!r2.has('0,1'), 'Band must not enter tile exceeding MAX_STACK');
+    },
+    test_ai_turn_execution() {
+      const s = MapGen.generate('EMPIRE', 8);
+      EconomySystem.processTurnStart(s, 'SYLVAN');
+      AIController.runTurn(s, 'SYLVAN');
+      TestRunner.assert(s.factions.SYLVAN.alive, 'AI turn completes cleanly');
+    },
+    test_difficulty_levels() {
+      const easy = MapGen.generate('EMPIRE', 9, 'easy');
+      const hard = MapGen.generate('EMPIRE', 9, 'hard');
+      TestRunner.assert(easy.difficulty === 'easy' && hard.difficulty === 'hard', 'Difficulty stored on state');
+      TestRunner.assert(easy.factions.SYLVAN.gold === 150 && hard.factions.SYLVAN.gold === 150, 'Starting gold is symmetric across difficulties');
+      const easyTown = easy.towns.find(t => t.owner === 'SYLVAN');
+      const hardTown = hard.towns.find(t => t.owner === 'SYLVAN');
+      TestRunner.assert(easyTown.turnsLeft === hardTown.turnsLeft, 'Build turns are symmetric across difficulties');
+      AIController.runTurn(easy, 'SYLVAN');
+      const easyRemaining = getUnitsAt(easy, easyTown.x, easyTown.y).filter(u => u.owner === 'SYLVAN');
+      TestRunner.assert(easyRemaining.length >= 1, 'Easy AI keeps garrison on its town');
+    },
+    test_town_blueprints_and_queued_switch() {
+      const s = MapGen.generate('EMPIRE', 10);
+      const town = s.towns.find(t => t.owner === 'EMPIRE');
+      s.units = [];
+      s.factions.EMPIRE.gold = 500;
+      // 1-turn unit (EMP_GUARD) switches immediately to EMP_PALADIN (2t, 350g)
+      const ok1 = EconomySystem.buyProduction(s, town, 'EMP_PALADIN');
+      TestRunner.assert(ok1 && s.factions.EMPIRE.gold === 150, 'Paid 350g to unlock Paladin');
+      TestRunner.assert(town.prodUnit === 'EMP_PALADIN' && town.nextProdUnit === null && town.turnsLeft === 2, '1-turn Guard switched immediately to Paladin');
+      // Advance 1 turn so Paladin is mid-production (1t left)
+      EconomySystem.processTurnStart(s, 'EMPIRE');
+      TestRunner.assert(town.turnsLeft === 1 && s.units.length === 0, 'Paladin mid-production with 1t left');
+      // Switching back to already-unlocked Guard is free and queues behind Paladin
+      const goldBefore = s.factions.EMPIRE.gold;
+      const ok2 = EconomySystem.buyProduction(s, town, 'EMP_GUARD');
+      TestRunner.assert(ok2 && s.factions.EMPIRE.gold === goldBefore, 'Switching to unlocked Guard costs 0 gold');
+      TestRunner.assert(town.prodUnit === 'EMP_PALADIN' && town.nextProdUnit === 'EMP_GUARD', 'Guard queued behind mid-production Paladin');
+      // Next turn: Paladin finishes & spawns, production switches to Guard
+      EconomySystem.processTurnStart(s, 'EMPIRE');
+      TestRunner.assert(s.units.length === 1 && s.units[0].type === 'EMP_PALADIN', 'Paladin finished before switching');
+      TestRunner.assert(town.prodUnit === 'EMP_GUARD' && town.nextProdUnit === null, 'Switched to Guard after Paladin spawned');
+    },
+    test_upkeep_and_bankruptcy() {
+      const s = MapGen.generate('EMPIRE', 11);
+      const town = s.towns.find(t => t.owner === 'EMPIRE');
+      EconomySystem.pauseProduction(s, town);
+      TestRunner.assert(town.prodUnit === null && town.turnsLeft === 0, 'Pause clears active production');
+      // 1 town (25g income), 7 Eagles (7 * 4g = 28g upkeep), 0 gold -> bankruptcy disbands 1 Eagle
+      s.units = [];
+      for (let i = 0; i < 7; i++) s.units.push(createUnit('EMP_EAGLE', 'EMPIRE', town.x, town.y));
+      s.factions.EMPIRE.gold = 0;
+      const res = EconomySystem.processTurnStart(s, 'EMPIRE');
+      TestRunner.assert(res.disbanded === 1 && s.units.length === 6, 'Bankruptcy disbands excess units until upkeep <= income');
+      TestRunner.assert(s.factions.EMPIRE.gold === 0, 'Treasury floors at 0 on bankruptcy');
+    },
+    test_neutral_militia_no_respawn() {
+      const s = MapGen.generate('EMPIRE', 12);
+      const neuTown = s.towns.find(t => t.owner === null);
+      const militia = getUnitsAt(s, neuTown.x, neuTown.y);
+      TestRunner.assert(militia.length === 1 && militia[0].type === 'NEU_MILITIA', 'Neutral town spawns 1 militia at map gen');
+      // Simulate mutual kill: militia is gone, town still neutral
+      s.units = s.units.filter(u => u.id !== militia[0].id);
+      const scout = createUnit('EMP_SCOUT', 'EMPIRE', neuTown.x + 1, neuTown.y);
+      s.units.push(scout);
+      const res = CombatSystem.resolveCombat(s, [scout], neuTown.x, neuTown.y);
+      TestRunner.assert(res.captured && neuTown.owner === 'EMPIRE' && scout.hp === CONFIG.UNITS.EMP_SCOUT.maxHp, 'Undefended neutral town is captured without respawning militia');
+    }
+  };
+
+  // =========================================================================
+  // 11. UI, CANVAS RENDERER & CONTROLLER
+  // =========================================================================
+  let gameState = null;
+
+  const canvas = document.getElementById('game-canvas');
+  const ctx = canvas.getContext('2d');
+  const mapWrap = document.getElementById('map-wrap');
+  const camera = { x: 0, y: 0, zoom: 1 };
+  let selectedTile = null, selectedUnitId = null, reachableCache = null;
+
+  function centerCameraOn(tx, ty) {
+    const rect = mapWrap.getBoundingClientRect();
+    const ts = CONFIG.TILE_SIZE * camera.zoom;
+    camera.x = rect.width / 2 - (tx + 0.5) * ts;
+    camera.y = rect.height / 2 - (ty + 0.5) * ts;
+  }
+
+  function showToast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg; el.classList.add('show');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('show'), 2000);
+  }
+
+  function resizeCanvas() {
+    const rect = mapWrap.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.max(1, rect.width) * dpr;
+    canvas.height = Math.max(1, rect.height) * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    render();
+  }
+  window.addEventListener('resize', resizeCanvas);
+
+  const animatingUnits = new Map();
+  let animFrameId = null;
+  function startAnimLoop() {
+    if (animFrameId || typeof requestAnimationFrame !== 'function') return;
+    const step = () => {
+      render();
+      if (animatingUnits.size > 0) {
+        animFrameId = requestAnimationFrame(step);
+      } else {
+        animFrameId = null;
+      }
+    };
+    animFrameId = requestAnimationFrame(step);
+  }
+
+  function render() {
+    const rect = mapWrap.getBoundingClientRect();
+    ctx.clearRect(0, 0, rect.width, rect.height);
+    if (!gameState) return;
+    const ts = CONFIG.TILE_SIZE * camera.zoom;
+
+    for (let y = 0; y < gameState.map.height; y++) {
+      for (let x = 0; x < gameState.map.width; x++) {
+        const tile = getTile(gameState, x, y);
+        const px = camera.x + x * ts, py = camera.y + y * ts;
+        if (px + ts < 0 || py + ts < 0 || px > rect.width || py > rect.height) continue;
+
+        ctx.fillStyle = CONFIG.TERRAIN[tile.terrain].color;
+        ctx.fillRect(px, py, ts, ts);
+        ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px, py, ts, ts);
+
+        if (reachableCache) {
+          if (reachableCache.has(`${x},${y}`)) {
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.28)';
+            ctx.fillRect(px + 1, py + 1, ts - 2, ts - 2);
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(px + 2, py + 2, ts - 4, ts - 4);
+          } else if (!selectedTile || selectedTile.x !== x || selectedTile.y !== y) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+            ctx.fillRect(px, py, ts, ts);
+          }
+        }
+        if (selectedTile && selectedTile.x === x && selectedTile.y === y) {
+          ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 2.5;
+          ctx.strokeRect(px + 1, py + 1, ts - 2, ts - 2);
+        }
+
+        const town = getTownAt(gameState, x, y);
+        if (town) {
+          ctx.fillStyle = town.owner ? CONFIG.FACTIONS[town.owner].color : '#757575';
+          ctx.beginPath();
+          ctx.arc(px + ts * 0.5, py + ts * 0.5, ts * 0.36, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.font = `${Math.floor(ts * 0.52)}px sans-serif`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('🏰', px + ts * 0.5, py + ts * 0.52);
+        }
+
+        const units = getUnitsAt(gameState, x, y).filter(u => u.type !== 'NEU_MILITIA' || u.revealed);
+        if (units.length > 0) {
+          const top = units[0], def = CONFIG.UNITS[top.type];
+          let drawX = px, drawY = py;
+          const anim = animatingUnits.get(top.id);
+          if (anim) {
+            const t = Math.min(1, (performance.now() - anim.start) / anim.duration);
+            const ease = t * (2 - t);
+            drawX = camera.x + (anim.fromX + (anim.toX - anim.fromX) * ease) * ts;
+            drawY = camera.y + (anim.fromY + (anim.toY - anim.fromY) * ease) * ts;
+            if (t >= 1) animatingUnits.delete(top.id);
+          }
+          ctx.font = `${Math.floor(ts * 0.55)}px sans-serif`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(def.emoji, drawX + ts * 0.5, drawY + ts * 0.5);
+
+          ctx.fillStyle = top.owner === 'NEUTRAL' ? '#9e9e9e' : CONFIG.FACTIONS[top.owner].color;
+          ctx.beginPath();
+          ctx.arc(drawX + ts * 0.2, drawY + ts * 0.2, ts * 0.12, 0, Math.PI * 2);
+          ctx.fill();
+
+          if (units.length > 1) {
+            ctx.fillStyle = 'rgba(0,0,0,0.75)';
+            ctx.fillRect(drawX + ts * 0.58, drawY + ts * 0.62, ts * 0.38, ts * 0.32);
+            ctx.fillStyle = '#fff';
+            ctx.font = `bold ${Math.floor(ts * 0.24)}px sans-serif`;
+            ctx.fillText(`×${units.length}`, drawX + ts * 0.77, drawY + ts * 0.78);
+          }
+
+          const hpPct = Math.max(0, top.hp / getUnitMaxHp(top));
+          ctx.fillStyle = '#111';
+          ctx.fillRect(drawX + 4, drawY + ts - 6, ts - 8, 4);
+          ctx.fillStyle = hpPct > 0.5 ? '#4caf50' : hpPct > 0.25 ? '#ff9800' : '#f44336';
+          ctx.fillRect(drawX + 4, drawY + ts - 6, (ts - 8) * hpPct, 4);
+        }
+      }
+    }
+  }
+
+  const infoDropdown = document.getElementById('game-info-dropdown');
+  function renderGameInfoDropdown() {
+    if (!gameState || !infoDropdown.classList.contains('open')) return;
+    const diff = getDifficulty(gameState);
+    const sizeLabel = gameState.mapSize
+      ? `${gameState.mapSize} (${gameState.map.width}×${gameState.map.height})`
+      : `${gameState.map.width}×${gameState.map.height}`;
+    const neutralTowns = gameState.towns.filter(t => t.owner === null).length;
+    const rows = ['EMPIRE', 'SYLVAN', 'UNDEAD'].map(id => {
+      const f = CONFIG.FACTIONS[id];
+      const alive = gameState.factions[id].alive;
+      const towns = gameState.towns.filter(t => t.owner === id).length;
+      const units = gameState.units.filter(u => u.owner === id).length;
+      const isYou = id === gameState.humanFaction;
+      return `
+        <div class="info-row${alive ? '' : ' dead'}">
+          <div class="info-row-left">
+            <span>${f.emoji}</span>
+            <span>${f.name}${isYou ? ' (You)' : ''}</span>
+          </div>
+          <div class="info-row-stats">
+            <span>🏰 ${towns}</span>
+            <span>⚔️ ${units}</span>
+          </div>
+        </div>`;
+    }).join('');
+    const fId = gameState.humanFaction;
+    const income = EconomySystem.getFactionIncome(gameState, fId);
+    const upkeep = EconomySystem.getFactionUpkeep(gameState, fId);
+    const net = income - upkeep;
+    infoDropdown.innerHTML = `
+      <div class="info-meta">
+        <span>${diff.emoji} ${diff.label}</span>
+        <span>🗺️ ${sizeLabel}</span>
+        <span>⏳ ${gameState.turn}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px;">
+        ${rows}
+        <div class="info-row" style="opacity:0.75;">
+          <div class="info-row-left"><span>🏳️</span><span>Neutral Towns</span></div>
+          <div class="info-row-stats"><span>🏰 ${neutralTowns}</span></div>
+        </div>
+      </div>
+      <div class="info-econ">
+        <span>Income: +${income}g</span>
+        <span>Upkeep: -${upkeep}g</span>
+        <span style="color:${net < 0 ? '#ef5350' : 'var(--text)'}">Net: ${net >= 0 ? '+' : ''}${net}g</span>
+      </div>`;
+  }
+
+  document.getElementById('faction-badge').onclick = (e) => {
+    e.stopPropagation();
+    if (!gameState) return;
+    infoDropdown.classList.toggle('open');
+    renderGameInfoDropdown();
+  };
+  document.addEventListener('pointerdown', (e) => {
+    if (!infoDropdown.classList.contains('open')) return;
+    if (!infoDropdown.contains(e.target) && e.target.id !== 'faction-badge') {
+      infoDropdown.classList.remove('open');
+    }
+  });
+
+  function updateHUD() {
+    if (!gameState) return;
+    const fId = gameState.humanFaction, f = CONFIG.FACTIONS[fId];
+    const badge = document.getElementById('faction-badge');
+    badge.textContent = `${f.emoji} ${f.name.split(' ')[0]} ▾`;
+    badge.style.background = f.color;
+
+    const ownedTowns = gameState.towns.filter(t => t.owner === fId);
+    const income = ownedTowns.reduce((s, t) => s + t.income, 0);
+    const upkeep = EconomySystem.getFactionUpkeep(gameState, fId);
+    const net = income - upkeep;
+    const goldEl = document.getElementById('gold-stat');
+    goldEl.textContent = `💰 ${gameState.factions[fId].gold} (${net >= 0 ? '+' : ''}${net})`;
+    goldEl.style.color = net < 0 ? '#ef5350' : '';
+    document.getElementById('town-stat').textContent = `🏰 ${ownedTowns.length}/${gameState.towns.length}`;
+    document.getElementById('turn-stat').textContent = `⏳ ${gameState.turn}`;
+    renderGameInfoDropdown();
+
+    const avatar = document.getElementById('drawer-avatar');
+    const title = document.getElementById('drawer-title');
+    const sub = document.getElementById('drawer-sub');
+    const btnBand = document.getElementById('btn-band');
+    const btnWait = document.getElementById('btn-wait');
+
+    const selUnit = gameState.units.find(u => u.id === selectedUnitId);
+    if (selUnit) {
+      const group = MovementSystem.getMoveGroup(gameState, selUnit);
+      const def = CONFIG.UNITS[selUnit.type];
+      const lvl = getUnitLevelInfo(selUnit);
+      avatar.textContent = def.emoji;
+      title.textContent = group.length > 1
+        ? `Band (${group.length} units) • MP ${MovementSystem.getGroupMp(group)}`
+        : `${def.name} ${lvl.badge} • HP ${selUnit.hp}/${getUnitMaxHp(selUnit)}`;
+      sub.textContent = `ATK ${def.atk + lvl.atk} • DEF ${def.def + lvl.def} • MP ${selUnit.mp}/${def.maxMp} • XP ${selUnit.xp}`;
+      const coLocated = getUnitsAt(gameState, selUnit.x, selUnit.y).filter(u => u.owner === fId);
+      btnBand.disabled = coLocated.length < 2 && !selUnit.bandId;
+      btnBand.textContent = selUnit.bandId ? '🔓 Disband' : '🔗 Band';
+      btnWait.disabled = false;
+    } else if (selectedTile) {
+      const unitsHere = getUnitsAt(gameState, selectedTile.x, selectedTile.y).filter(u => u.type !== 'NEU_MILITIA' || u.revealed);
+      const town = getTownAt(gameState, selectedTile.x, selectedTile.y);
+      if (unitsHere.length > 0) {
+        const top = unitsHere[0], def = CONFIG.UNITS[top.type], lvl = getUnitLevelInfo(top);
+        const ownerName = top.owner === 'NEUTRAL' ? 'Neutral' : CONFIG.FACTIONS[top.owner].name;
+        avatar.textContent = def.emoji;
+        title.textContent = `${def.name}${unitsHere.length > 1 ? ` (×${unitsHere.length})` : ''} • HP ${top.hp}/${getUnitMaxHp(top)}`;
+        sub.textContent = `${ownerName} • ATK ${def.atk + lvl.atk} • DEF ${def.def + lvl.def}`;
+      } else if (town) {
+        avatar.textContent = '🏰';
+        title.textContent = `${town.name} (${town.owner ? CONFIG.FACTIONS[town.owner].name : 'Neutral'})`;
+        const nextSuffix = town.nextProdUnit ? ` → ${CONFIG.UNITS[town.nextProdUnit].emoji}` : '';
+        sub.textContent = town.prodUnit
+          ? `Producing ${CONFIG.UNITS[town.prodUnit].emoji} ${CONFIG.UNITS[town.prodUnit].name} (${town.turnsLeft}t)${nextSuffix}`
+          : `+${town.income} Gold/turn • Tap to manage`;
+      } else {
+        const tDef = CONFIG.TERRAIN[selectedTile.terrain];
+        avatar.textContent = '🗺️'; title.textContent = tDef.name; sub.textContent = `Move Cost: ${tDef.moveCost} MP`;
+      }
+      btnBand.disabled = true; btnWait.disabled = true;
+    } else {
+      avatar.textContent = '🗺️'; title.textContent = 'Tap a unit or town';
+      sub.textContent = 'Pan with 1 finger • Pinch or scroll to zoom';
+      btnBand.disabled = true; btnWait.disabled = true;
+    }
+
+    const stackStrip = document.getElementById('stack-strip');
+    stackStrip.innerHTML = '';
+    if (selectedTile) {
+      const friendlyOnTile = getUnitsAt(gameState, selectedTile.x, selectedTile.y).filter(u => u.owner === fId);
+      const otherOnTile = getUnitsAt(gameState, selectedTile.x, selectedTile.y).filter(u => u.owner !== fId && (u.type !== 'NEU_MILITIA' || u.revealed));
+      const townOnTile = getTownAt(gameState, selectedTile.x, selectedTile.y);
+
+      if (friendlyOnTile.length > 1 || (friendlyOnTile.length >= 1 && townOnTile && townOnTile.owner === fId)) {
+        friendlyOnTile.forEach(u => {
+          const btn = document.createElement('button');
+          btn.className = `stack-chip${u.id === selectedUnitId ? ' active' : ''}`;
+          btn.textContent = `${CONFIG.UNITS[u.type].emoji}${u.hp}`;
+          btn.onclick = () => {
+            selectedUnitId = u.id;
+            const grp = MovementSystem.getMoveGroup(gameState, u);
+            reachableCache = MovementSystem.getGroupMp(grp) > 0
+              ? MovementSystem.getReachableTiles(gameState, grp).reachable : null;
+            updateHUD(); render();
+          };
+          stackStrip.appendChild(btn);
+        });
+        if (townOnTile && townOnTile.owner === fId) {
+          const tBtn = document.createElement('button');
+          tBtn.className = 'stack-chip';
+          tBtn.textContent = '🏰';
+          tBtn.onclick = () => showTownModal(townOnTile);
+          stackStrip.appendChild(tBtn);
+        }
+      } else if (otherOnTile.length > 0 && !selUnit) {
+        if (otherOnTile.length > 1 || townOnTile) {
+          otherOnTile.forEach(u => {
+            const btn = document.createElement('button');
+            btn.className = 'stack-chip';
+            btn.textContent = `${CONFIG.UNITS[u.type].emoji}${u.hp}`;
+            btn.onclick = () => {
+              const def = CONFIG.UNITS[u.type], lvl = getUnitLevelInfo(u);
+              const ownerName = u.owner === 'NEUTRAL' ? 'Neutral' : CONFIG.FACTIONS[u.owner].name;
+              avatar.textContent = def.emoji;
+              title.textContent = `${def.name} ${lvl.badge} • HP ${u.hp}/${getUnitMaxHp(u)}`;
+              sub.textContent = `${ownerName} • ATK ${def.atk + lvl.atk} • DEF ${def.def + lvl.def}`;
+            };
+            stackStrip.appendChild(btn);
+          });
+          if (townOnTile) {
+            const tBtn = document.createElement('button');
+            tBtn.className = 'stack-chip';
+            tBtn.textContent = '🏰';
+            tBtn.onclick = () => {
+              avatar.textContent = '🏰';
+              title.textContent = `${townOnTile.name} (${townOnTile.owner ? CONFIG.FACTIONS[townOnTile.owner].name : 'Neutral'})`;
+              sub.textContent = `+${townOnTile.income} Gold/turn • +2 DEF & First Strike`;
+            };
+            stackStrip.appendChild(tBtn);
+          }
+        }
+      }
+    }
+  }
+
+  function handleTileTap(tx, ty) {
+    if (gameState.winner) return;
+    const tile = getTile(gameState, tx, ty);
+    if (!tile) return;
+
+    selectedTile = tile;
+    const unitsHere = getUnitsAt(gameState, tx, ty).filter(u => u.owner === gameState.humanFaction);
+    if (unitsHere.length > 0) {
+      selectedUnitId = unitsHere[0].id;
+      const group = MovementSystem.getMoveGroup(gameState, unitsHere[0]);
+      reachableCache = MovementSystem.getGroupMp(group) > 0
+        ? MovementSystem.getReachableTiles(gameState, group).reachable : null;
+    } else {
+      selectedUnitId = null; reachableCache = null;
+      const town = getTownAt(gameState, tx, ty);
+      if (town && town.owner === gameState.humanFaction) showTownModal(town);
+    }
+    updateHUD(); render();
+  }
+
+  let pointers = new Map(), lastDist = null, lastMid = null, dragStart = null, moved = false, longPressTimer = null, longPressed = false;
+
+  canvas.addEventListener('pointerdown', (e) => {
+    canvas.setPointerCapture(e.pointerId);
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size === 1) {
+      dragStart = { x: e.clientX, y: e.clientY, camX: camera.x, camY: camera.y };
+      moved = false;
+      longPressed = false;
+      clearTimeout(longPressTimer);
+      longPressTimer = setTimeout(() => {
+        if (!moved && pointers.size === 1) {
+          longPressed = true;
+          const rect = canvas.getBoundingClientRect();
+          const ts = CONFIG.TILE_SIZE * camera.zoom;
+          const tx = Math.floor((e.clientX - rect.left - camera.x) / ts);
+          const ty = Math.floor((e.clientY - rect.top - camera.y) / ts);
+          const selUnit = gameState.units.find(u => u.id === selectedUnitId);
+          if (!selUnit || selUnit.owner !== gameState.humanFaction) return;
+          const group = MovementSystem.getMoveGroup(gameState, selUnit);
+          const enemiesHere = getUnitsAt(gameState, tx, ty).filter(u => u.owner !== gameState.humanFaction);
+          const townHere = getTownAt(gameState, tx, ty);
+          const isHostile = enemiesHere.length > 0 || (townHere && townHere.owner !== gameState.humanFaction);
+
+          if (isHostile && MovementSystem.getGroupMp(group) >= 1) {
+            let canAttack = CombatSystem.isAdjacent(selUnit.x, selUnit.y, tx, ty);
+            if (!canAttack && reachableCache) {
+              let bestAdj = null;
+              for (const [k, info] of reachableCache.entries()) {
+                if (CombatSystem.isAdjacent(info.x, info.y, tx, ty) && (MovementSystem.getGroupMp(group) - info.cost) >= 1) {
+                  if (!bestAdj || info.cost < bestAdj.cost) bestAdj = info;
+                }
+              }
+              if (bestAdj) { MovementSystem.moveGroup(gameState, group, bestAdj.x, bestAdj.y); canAttack = true; }
+            }
+            if (canAttack) {
+              pendingEliminations.length = 0;
+              const res = CombatSystem.resolveCombat(gameState, group, tx, ty);
+              if (res) {
+                const eliminated = pendingEliminations.splice(0);
+                const capturedTown = (res.captured && !gameState.winner) ? getTownAt(gameState, tx, ty) : null;
+                const openTown = (capturedTown && capturedTown.owner === gameState.humanFaction)
+                  ? () => showTownModal(capturedTown)
+                  : null;
+                let onAfterBattle = openTown;
+                let btnLabel = openTown ? 'Manage Town' : 'Close';
+                if (gameState.winner) {
+                  onAfterBattle = () => showVictoryModal();
+                  btnLabel = 'Continue';
+                } else if (eliminated.length > 0) {
+                  onAfterBattle = () => showEliminatedModal(eliminated[0], openTown);
+                  btnLabel = 'Continue';
+                }
+                showBattleModal(res.log, onAfterBattle, btnLabel);
+                if (res.survivingAttackers.length === 0) selectedUnitId = null;
+                reachableCache = null;
+                updateHUD(); render(); return;
+              }
+            }
+          }
+
+          if (reachableCache && reachableCache.has(`${tx},${ty}`)) {
+            MovementSystem.moveGroup(gameState, group, tx, ty);
+            reachableCache = null;
+            selectedTile = getTile(gameState, tx, ty);
+            updateHUD(); render();
+          }
+        }
+      }, 450);
+    } else if (pointers.size === 2) {
+      clearTimeout(longPressTimer);
+      const rect = canvas.getBoundingClientRect();
+      const pts = [...pointers.values()];
+      lastDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      lastMid = {
+        x: (pts[0].x + pts[1].x) / 2 - rect.left,
+        y: (pts[0].y + pts[1].y) / 2 - rect.top
+      };
+      moved = true;
+    }
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    if (!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size === 1 && dragStart) {
+      const dx = e.clientX - dragStart.x, dy = e.clientY - dragStart.y;
+      if (Math.hypot(dx, dy) > 6) { moved = true; clearTimeout(longPressTimer); }
+      camera.x = dragStart.camX + dx; camera.y = dragStart.camY + dy; render();
+    } else if (pointers.size === 2) {
+      const rect = canvas.getBoundingClientRect();
+      const pts = [...pointers.values()];
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      const mid = {
+        x: (pts[0].x + pts[1].x) / 2 - rect.left,
+        y: (pts[0].y + pts[1].y) / 2 - rect.top
+      };
+      if (lastDist && lastMid) {
+        const newZoom = Math.max(0.5, Math.min(2.2, camera.zoom * (dist / lastDist)));
+        const worldX = (lastMid.x - camera.x) / camera.zoom;
+        const worldY = (lastMid.y - camera.y) / camera.zoom;
+        camera.x = mid.x - worldX * newZoom;
+        camera.y = mid.y - worldY * newZoom;
+        camera.zoom = newZoom;
+        render();
+      }
+      lastDist = dist;
+      lastMid = mid;
+    }
+  });
+
+  canvas.addEventListener('pointerup', (e) => {
+    clearTimeout(longPressTimer);
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) { lastDist = null; lastMid = null; }
+    if (pointers.size === 1) {
+      const pt = [...pointers.values()][0];
+      dragStart = { x: pt.x, y: pt.y, camX: camera.x, camY: camera.y };
+    } else if (pointers.size === 0 && !moved && !longPressed) {
+      const rect = canvas.getBoundingClientRect();
+      const ts = CONFIG.TILE_SIZE * camera.zoom;
+      handleTileTap(
+        Math.floor((e.clientX - rect.left - camera.x) / ts),
+        Math.floor((e.clientY - rect.top - camera.y) / ts)
+      );
+    }
+  });
+
+  canvas.addEventListener('pointercancel', (e) => {
+    clearTimeout(longPressTimer);
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) { lastDist = null; lastMid = null; }
+  });
+
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const newZoom = Math.max(0.5, Math.min(2.2, camera.zoom * (e.deltaY < 0 ? 1.1 : 0.9)));
+    const worldX = (mx - camera.x) / camera.zoom;
+    const worldY = (my - camera.y) / camera.zoom;
+    camera.x = mx - worldX * newZoom;
+    camera.y = my - worldY * newZoom;
+    camera.zoom = newZoom;
+    render();
+  }, { passive: false });
+
+  // =========================================================================
+  // 12. BUTTONS & MODALS
+  // =========================================================================
+  const modalBackdrop = document.getElementById('modal-backdrop');
+  const modalTitle = document.getElementById('modal-title');
+  const modalBody = document.getElementById('modal-body');
+  const modalFooter = document.getElementById('modal-footer');
+
+  function openModal(title, bodyHtml, footerHtml = '', menuMode = false) {
+    modalTitle.textContent = title; modalBody.innerHTML = bodyHtml; modalFooter.innerHTML = footerHtml;
+    modalBackdrop.querySelector('.modal').classList.toggle('menu-mode', menuMode);
+    document.getElementById('modal-close').style.visibility = gameState ? 'visible' : 'hidden';
+    modalBackdrop.classList.add('open');
+  }
+  function closeModal() { modalBackdrop.classList.remove('open'); }
+  document.getElementById('modal-close').onclick = closeModal;
+
+  function showTownModal(town) {
+    const roster = Object.values(CONFIG.UNITS).filter(u => u.faction === town.owner);
+    const gold = gameState.factions[town.owner].gold;
+    const unlocked = town.unlockedUnits || [];
+    const curDef = town.prodUnit ? CONFIG.UNITS[town.prodUnit] : null;
+    const nextDef = town.nextProdUnit ? CONFIG.UNITS[town.nextProdUnit] : null;
+    const statusHtml = curDef
+      ? `<div class="town-status">
+           <span>🔨 ${curDef.emoji} ${curDef.name} (${town.turnsLeft}t)${nextDef ? ` → ${nextDef.emoji}` : ''}</span>
+           <button class="btn-sm sec" id="town-pause" style="padding:4px 8px;font-size:11px">⏸️ Pause</button>
+         </div>`
+      : `<div class="town-status" style="color:var(--muted)">⏸️ Idle — choose a unit to produce</div>`;
+
+    const cards = roster.map(u => {
+      const isCurrent = town.prodUnit === u.id;
+      const isNext = town.nextProdUnit === u.id;
+      const isUnlocked = unlocked.includes(u.id);
+      const canAfford = isUnlocked || gold >= u.cost;
+      let actionHtml;
+      if (isCurrent && !town.nextProdUnit) {
+        actionHtml = `<span class="status-pill">🔨 Building</span>`;
+      } else if (isNext) {
+        actionHtml = `<span class="status-pill">⏭️ Queued</span>`;
+      } else if (isUnlocked) {
+        actionHtml = `<button class="btn-sm sec" data-buy="${u.id}">Select</button>`;
+      } else {
+        actionHtml = `<button class="btn-sm" data-buy="${u.id}" ${!canAfford ? 'disabled' : ''}>💰 ${u.cost}</button>`;
+      }
+      return `
+        <div class="list-card">
+          <div class="list-card-left">
+            <div class="list-card-emoji">${u.emoji}</div>
+            <div>
+              <div style="font-weight:700;font-size:13px">${u.name}${isUnlocked ? ' ✓' : ''}</div>
+              <div style="font-size:11px;color:var(--muted)">HP ${u.maxHp} • ATK ${u.atk} • DEF ${u.def} • ${u.buildTurns}t • ${u.upkeep}g/t</div>
+            </div>
+          </div>
+          ${actionHtml}
+        </div>`;
+    }).join('');
+    openModal(`🏰 ${town.name}`, statusHtml + cards, `<button class="btn-sm sec" onclick="document.getElementById('modal-close').click()">Close</button>`);
+    const pauseBtn = document.getElementById('town-pause');
+    if (pauseBtn) {
+      pauseBtn.onclick = () => {
+        EconomySystem.pauseProduction(gameState, town);
+        showToast(`${town.name} production paused`);
+        showTownModal(town);
+        updateHUD();
+      };
+    }
+    modalBody.querySelectorAll('[data-buy]').forEach(btn => {
+      btn.onclick = () => {
+        const unitId = btn.dataset.buy;
+        const wasProducing = town.prodUnit;
+        if (EconomySystem.buyProduction(gameState, town, unitId)) {
+          const name = CONFIG.UNITS[unitId].name;
+          const msg = (wasProducing && town.nextProdUnit === unitId)
+            ? `Queued ${name} after current unit`
+            : `Producing ${name}`;
+          showToast(msg); showTownModal(town); updateHUD();
+        }
+      };
+    });
+  }
+
+  function showBattleModal(log, onClose = null, btnLabel = null) {
+    const label = btnLabel || (onClose ? 'Manage Town' : 'Close');
+    openModal('⚔️ Battle Report', `<div class="battle-log">${log.join('<br>')}</div>`, `<button class="btn-sm" id="battle-ok">${label}</button>`);
+    document.getElementById('battle-ok').onclick = () => {
+      closeModal();
+      if (onClose) onClose();
+    };
+  }
+
+  const pendingEliminations = [];
+  Hooks.on('onFactionEliminated', ({ factionId, state }) => {
+    if (state === gameState) pendingEliminations.push(factionId);
+  });
+
+  function showEliminatedModal(factionId, onClose = null) {
+    const f = CONFIG.FACTIONS[factionId];
+    const isHuman = factionId === gameState.humanFaction;
+    const footer = isHuman
+      ? `<button class="btn-sm sec" id="elim-new">New Game</button><button class="btn-sm" id="elim-ok">Watch AI</button>`
+      : `<button class="btn-sm" id="elim-ok">${onClose ? 'Continue' : 'Close'}</button>`;
+    openModal(isHuman ? '💀 You Were Eliminated' : '💀 Faction Eliminated',
+      `<div style="text-align:center;font-size:16px;padding:12px 0;">
+        <div style="font-size:44px;">${f.emoji}</div>
+        <p><strong>${f.name}</strong> has lost its last town and been wiped out!</p>
+      </div>`,
+      footer);
+    const newBtn = document.getElementById('elim-new');
+    if (newBtn) newBtn.onclick = () => showMenuModal();
+    document.getElementById('elim-ok').onclick = () => {
+      closeModal();
+      if (onClose) onClose();
+    };
+  }
+
+  function showVictoryModal() {
+    const w = CONFIG.FACTIONS[gameState.winner], won = gameState.winner === gameState.humanFaction;
+    openModal(won ? '🏆 Victory!' : '💀 Defeat',
+      `<div style="text-align:center;font-size:18px;padding:12px 0;">
+        <div style="font-size:48px;">${w.emoji}</div>
+        <p><strong>${w.name}</strong> has conquered the realm in ${gameState.turn} turns!</p>
+      </div>`,
+      `<button class="btn-sm" id="vic-new">New Game</button>`);
+    document.getElementById('vic-new').onclick = () => showNewGameModal();
+  }
+
+  function showNewGameModal() {
+    const diffOrder = ['easy', 'normal', 'hard'];
+    const curFaction = (gameState && gameState.humanFaction) || 'EMPIRE';
+    const curDiff = (gameState && gameState.difficulty) || 'normal';
+    const curDiffIdx = Math.max(0, diffOrder.indexOf(curDiff));
+    const factionCardsHtml = ['EMPIRE', 'SYLVAN', 'UNDEAD'].map(fId => {
+      const f = CONFIG.FACTIONS[fId];
+      const shortName = f.name.split(' ')[0];
+      const checked = fId === curFaction;
+      return `
+        <label class="faction-card${checked ? ' selected' : ''}" style="--fc-color:${f.color}" data-faction="${fId}">
+          <input type="radio" name="new-faction" value="${fId}" ${checked ? 'checked' : ''}>
+          <span class="fc-emoji">${f.emoji}</span>
+          <span class="fc-name">${shortName}</span>
+        </label>`;
+    }).join('');
+    const initDiff = CONFIG.DIFFICULTIES[diffOrder[curDiffIdx]];
+
+    openModal('', `
+      <div class="menu-hero" style="padding:0 0 2px;">
+        <div class="menu-hero-title" style="font-size:20px;">New Game</div>
+      </div>
+      <div class="new-game-box">
+        <div class="field-label">Choose Faction</div>
+        <div class="faction-grid" id="faction-picker">${factionCardsHtml}</div>
+        <div class="diff-wrap">
+          <div class="diff-header">
+            <span class="field-label">Difficulty</span>
+            <span class="diff-badge" id="diff-badge">${initDiff.emoji} ${initDiff.label}</span>
+          </div>
+          <input type="range" class="diff-slider" id="diff-slider" min="0" max="2" step="1" value="${curDiffIdx}">
+          <div class="diff-ticks"><span>Easy</span><span>Normal</span><span>Hard</span></div>
+          <div class="diff-desc" id="diff-desc">${initDiff.desc}</div>
+        </div>
+        <button class="act-btn primary" id="m-new-start">Start Game</button>
+      </div>
+    `, `<button class="btn-sm sec" id="ng-back">Back</button>`, true);
+
+    const picker = document.getElementById('faction-picker');
+    picker.querySelectorAll('input[name="new-faction"]').forEach(radio => {
+      radio.onchange = () => {
+        picker.querySelectorAll('.faction-card').forEach(card => {
+          card.classList.toggle('selected', card.dataset.faction === radio.value);
+        });
+      };
+    });
+
+    const slider = document.getElementById('diff-slider');
+    const diffBadge = document.getElementById('diff-badge');
+    const diffDesc = document.getElementById('diff-desc');
+    slider.oninput = () => {
+      const d = CONFIG.DIFFICULTIES[diffOrder[Number(slider.value)]];
+      diffBadge.textContent = `${d.emoji} ${d.label}`;
+      diffDesc.textContent = d.desc;
+    };
+
+    document.getElementById('ng-back').onclick = showMenuModal;
+    document.getElementById('m-new-start').onclick = () => {
+      const f = picker.querySelector('input[name="new-faction"]:checked')?.value || 'EMPIRE';
+      const dId = diffOrder[Number(slider.value)] || 'normal';
+      gameState = MapGen.generate(f, Date.now(), dId);
+      StorageSystem.save(gameState, 'autosave');
+      selectedUnitId = null; selectedTile = null; reachableCache = null;
+      const startTown = gameState.towns.find(t => t.owner === f);
+      if (startTown) centerCameraOn(startTown.x, startTown.y);
+      closeModal(); updateHUD(); render();
+      showToast(`${CONFIG.FACTIONS[f].emoji} ${CONFIG.DIFFICULTIES[dId].label} game started`);
+    };
+  }
+
+  let devTestsUnlocked = false;
+  const magicSeq = ['BL', 'TL', 'TR', 'BR'];
+  let magicProgress = 0;
+  modalBackdrop.addEventListener('pointerdown', (e) => {
+    if (devTestsUnlocked || !modalBackdrop.classList.contains('open')) return;
+    if (!modalBackdrop.querySelector('.modal').classList.contains('menu-mode')) return;
+    const nx = e.clientX / window.innerWidth;
+    const ny = e.clientY / window.innerHeight;
+    let corner = null;
+    if (nx < 0.25 && ny > 0.75) corner = 'BL';
+    else if (nx < 0.25 && ny < 0.25) corner = 'TL';
+    else if (nx > 0.75 && ny < 0.25) corner = 'TR';
+    else if (nx > 0.75 && ny > 0.75) corner = 'BR';
+    if (!corner) { magicProgress = 0; return; }
+    if (corner === magicSeq[magicProgress]) {
+      magicProgress++;
+      if (magicProgress === magicSeq.length) {
+        devTestsUnlocked = true;
+        magicProgress = 0;
+        const tBtn = document.getElementById('m-tests');
+        if (tBtn) tBtn.style.display = '';
+        const sBtn = document.getElementById('m-sim');
+        if (sBtn) sBtn.style.display = '';
+        showToast('Developer tools unlocked');
+      }
+    } else {
+      magicProgress = corner === magicSeq[0] ? 1 : 0;
+    }
+  });
+
+  async function showSimModal() {
+    const gamesPerDiff = 50, maxTurns = 60;
+    const diffs = ['easy', 'normal', 'hard'];
+    const totalGames = gamesPerDiff * diffs.length;
+    const order = ['EMPIRE', 'SYLVAN', 'UNDEAD'];
+    const tier3Ids = new Set(Object.values(CONFIG.UNITS).filter(u => u.cost >= 300).map(u => u.id));
+    let cancelled = false;
+
+    openModal('Balance Simulation',
+      `<div id="sim-status" style="font-size:13px;color:var(--muted);text-align:center;padding:12px 0;">Running 0/${totalGames} games...</div><div id="sim-results"></div>`,
+      `<button class="btn-sm sec" id="sim-back">Back</button>`);
+    document.getElementById('sim-back').onclick = () => { cancelled = true; showMenuModal(); };
+
+    let done = 0;
+    const cards = [];
+    for (const dId of diffs) {
+      const wins = { EMPIRE: 0, SYLVAN: 0, UNDEAD: 0, TIMEOUT: 0 };
+      let turnsSum = 0, finished = 0, peakSum = 0, disbands = 0, t3Games = 0;
+      for (let g = 0; g < gamesPerDiff; g++) {
+        if (cancelled) return;
+        const s = MapGen.generate('EMPIRE', 3000 + g * 37 + done * 13, dId);
+        let peak = 0, hadT3 = false;
+        for (let t = 1; t <= maxTurns && !s.winner; t++) {
+          s.turn = t;
+          for (let i = 0; i < 3; i++) {
+            const fId = order[(g + i) % 3];
+            if (!s.factions[fId].alive || s.winner) continue;
+            const res = EconomySystem.processTurnStart(s, fId);
+            disbands += res.disbanded;
+            await AIController.runTurn(s, fId, 0);
+            const cnt = s.units.filter(u => u.owner === fId).length;
+            if (cnt > peak) peak = cnt;
+            if (s.towns.some(tw => (tw.unlockedUnits || []).some(id => tier3Ids.has(id)))) hadT3 = true;
+          }
+        }
+        if (s.winner) { wins[s.winner]++; turnsSum += s.turn; finished++; }
+        else wins.TIMEOUT++;
+        peakSum += peak;
+        if (hadT3) t3Games++;
+        done++;
+        if (done % 3 === 0 || done === totalGames) {
+          const st = document.getElementById('sim-status');
+          if (st) st.textContent = done < totalGames ? `Running ${done}/${totalGames} games...` : `Completed ${totalGames} games (${gamesPerDiff}/difficulty)`;
+          await new Promise(r => setTimeout(r, 0));
+        }
+      }
+      const d = CONFIG.DIFFICULTIES[dId];
+      cards.push(`
+        <div class="list-card" style="flex-direction:column;align-items:stretch;gap:6px;">
+          <div style="display:flex;justify-content:space-between;font-weight:700;font-size:13px;">
+            <span>${d.emoji} ${d.label} (${gamesPerDiff} games)</span>
+            <span style="color:var(--muted)">Avg ${finished ? (turnsSum / finished).toFixed(1) : '-'}t</span>
+          </div>
+          <div style="font-size:12px;display:flex;justify-content:space-between;">
+            <span>👑 ${wins.EMPIRE}</span><span>🌿 ${wins.SYLVAN}</span><span>☠️ ${wins.UNDEAD}</span><span>⏱️ ${wins.TIMEOUT}</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);">Peak units: ${(peakSum / gamesPerDiff).toFixed(1)} • Tier 3+: ${t3Games}/${gamesPerDiff} • Disbands: ${(disbands / gamesPerDiff).toFixed(1)}</div>
+        </div>`);
+      const resEl = document.getElementById('sim-results');
+      if (resEl) resEl.innerHTML = cards.join('');
+    }
+  }
+
+  function showMenuModal() {
+    const hasAutosave = !gameState && !!StorageSystem.load('autosave');
+    const continueBtn = gameState
+      ? `<button class="act-btn" id="m-continue">Resume Game</button>`
+      : (hasAutosave ? `<button class="act-btn" id="m-continue">Continue Autosave</button>` : '');
+
+    openModal('', `
+      <div class="menu-hero">
+        <div class="menu-hero-icon">⚔️</div>
+        <div class="menu-hero-title">Emoji Warlords</div>
+      </div>
+      <button class="act-btn primary" id="m-new-game">New Game</button>
+      ${continueBtn}
+      <button class="act-btn" id="m-save" ${!gameState ? 'disabled' : ''}>Save Slot 1</button>
+      <button class="act-btn" id="m-load">Load Slot 1</button>
+      <button class="act-btn" id="m-tests" style="${devTestsUnlocked ? '' : 'display:none'}">Run Unit Tests</button>
+      <button class="act-btn" id="m-sim" style="${devTestsUnlocked ? '' : 'display:none'}">Run Balance Simulation</button>
+    `, '', true);
+
+    document.getElementById('m-new-game').onclick = showNewGameModal;
+    const contEl = document.getElementById('m-continue');
+    if (contEl) {
+      contEl.onclick = () => {
+        if (!gameState) {
+          const loaded = StorageSystem.load('autosave');
+          if (loaded) {
+            gameState = loaded;
+            selectedUnitId = null; selectedTile = null; reachableCache = null;
+            const startTown = gameState.towns.find(t => t.owner === gameState.humanFaction);
+            if (startTown) centerCameraOn(startTown.x, startTown.y);
+            closeModal(); updateHUD(); render(); showToast('Resumed autosave');
+          }
+        } else {
+          closeModal();
+        }
+      };
+    }
+    document.getElementById('m-save').onclick = () => {
+      if (!gameState) return;
+      StorageSystem.save(gameState, 'save_1'); showToast('Saved to Slot 1'); closeModal();
+    };
+    document.getElementById('m-load').onclick = () => {
+      const loaded = StorageSystem.load('save_1');
+      if (loaded) {
+        gameState = loaded; selectedUnitId = null; selectedTile = null; reachableCache = null;
+        const startTown = gameState.towns.find(t => t.owner === gameState.humanFaction);
+        if (startTown) centerCameraOn(startTown.x, startTown.y);
+        closeModal(); updateHUD(); render(); showToast('Loaded Slot 1');
+      } else showToast('No save in Slot 1');
+    };
+    document.getElementById('m-tests').onclick = () => {
+      const results = TestRunner.runAll(), passed = results.filter(r => r.pass).length;
+      const html = results.map(r => `<div class="list-card"><span style="font-size:12px;font-family:monospace;min-width:0;overflow-wrap:anywhere">${r.name}</span><span class="${r.pass ? 'test-pass' : 'test-fail'}" style="flex-shrink:0">${r.pass ? 'PASS' : 'FAIL'}</span></div>`).join('');
+      openModal(`Unit Tests (${passed}/${results.length})`, html, `<button class="btn-sm sec" id="t-back">Back</button>`);
+      document.getElementById('t-back').onclick = showMenuModal;
+    };
+    document.getElementById('m-sim').onclick = showSimModal;
+  }
+
+  document.getElementById('menu-btn').onclick = showMenuModal;
+
+  document.getElementById('btn-band').onclick = () => {
+    const sel = gameState.units.find(u => u.id === selectedUnitId);
+    if (!sel) return;
+    if (sel.bandId) { MovementSystem.disbandGroup(gameState, MovementSystem.getMoveGroup(gameState, sel)); showToast('Band disbanded'); }
+    else { MovementSystem.bandUnitsAt(gameState, sel.x, sel.y, gameState.humanFaction); showToast('Units banded'); }
+    const group = MovementSystem.getMoveGroup(gameState, sel);
+    reachableCache = MovementSystem.getGroupMp(group) > 0 ? MovementSystem.getReachableTiles(gameState, group).reachable : null;
+    updateHUD(); render();
+  };
+
+  document.getElementById('btn-wait').onclick = () => {
+    const sel = gameState.units.find(u => u.id === selectedUnitId);
+    if (!sel) return;
+    MovementSystem.getMoveGroup(gameState, sel).forEach(u => { u.waited = true; });
+    document.getElementById('btn-next').click();
+  };
+
+  document.getElementById('btn-next').onclick = () => {
+    const candidates = gameState.units.filter(u => u.owner === gameState.humanFaction && u.mp > 0 && !u.waited);
+    if (candidates.length === 0) { showToast('No units with MP remaining'); return; }
+    const idx = candidates.findIndex(u => u.id === selectedUnitId);
+    const next = candidates[(idx + 1) % candidates.length];
+    selectedUnitId = next.id;
+    selectedTile = getTile(gameState, next.x, next.y);
+    const group = MovementSystem.getMoveGroup(gameState, next);
+    reachableCache = MovementSystem.getReachableTiles(gameState, group).reachable;
+    centerCameraOn(next.x, next.y);
+    updateHUD(); render();
+  };
+
+  async function runSpectatorTurns() {
+    const runState = gameState;
+    const btnEnd = document.getElementById('btn-end');
+    btnEnd.disabled = true;
+    btnEnd.textContent = 'Spectating...';
+    selectedUnitId = null; reachableCache = null;
+    updateHUD(); render();
+    while (!runState.winner && gameState === runState) {
+      runState.turn++;
+      for (const fId of ['EMPIRE', 'SYLVAN', 'UNDEAD']) {
+        if (gameState !== runState) break;
+        if (!runState.factions[fId].alive || runState.winner) continue;
+        showToast(`${CONFIG.FACTIONS[fId].emoji} ${CONFIG.FACTIONS[fId].name} turn`);
+        EconomySystem.processTurnStart(runState, fId);
+        await AIController.runTurn(runState, fId, 160, () => {
+          if (gameState === runState) { updateHUD(); render(); }
+        });
+        if (runState.winner) break;
+      }
+    }
+    btnEnd.disabled = false;
+    btnEnd.textContent = 'End Turn';
+    if (gameState === runState && runState.winner) {
+      pendingEliminations.length = 0;
+      showVictoryModal();
+    }
+    updateHUD(); render();
+  }
+
+  document.getElementById('btn-end').onclick = async () => {
+    if (gameState.winner) return;
+    if (!gameState.factions[gameState.humanFaction].alive) {
+      runSpectatorTurns();
+      return;
+    }
+    const runState = gameState;
+    const btnEnd = document.getElementById('btn-end');
+    btnEnd.disabled = true;
+    btnEnd.textContent = 'AI Turn...';
+    selectedUnitId = null; reachableCache = null;
+    updateHUD(); render();
+    for (const fId of ['EMPIRE', 'SYLVAN', 'UNDEAD']) {
+      if (gameState !== runState) return;
+      if (fId === gameState.humanFaction || !gameState.factions[fId].alive) continue;
+      showToast(`${CONFIG.FACTIONS[fId].emoji} ${CONFIG.FACTIONS[fId].name} turn`);
+      EconomySystem.processTurnStart(gameState, fId);
+      await AIController.runTurn(gameState, fId, 240, () => { updateHUD(); render(); });
+      if (gameState.winner) break;
+    }
+    if (gameState !== runState) return;
+    if (!gameState.winner) {
+      if (!gameState.factions[gameState.humanFaction].alive) {
+        pendingEliminations.length = 0;
+        btnEnd.disabled = true;
+        btnEnd.textContent = 'Eliminated';
+        updateHUD(); render();
+        showEliminatedModal(gameState.humanFaction, () => runSpectatorTurns());
+        return;
+      }
+      gameState.turn++;
+      const turnRes = EconomySystem.processTurnStart(gameState, gameState.humanFaction);
+      if (turnRes && turnRes.disbanded > 0) {
+        showToast(`⚠️ Upkeep unpaid! Disbanded ${turnRes.disbanded} unit${turnRes.disbanded > 1 ? 's' : ''}`);
+      }
+      StorageSystem.save(gameState, 'autosave');
+      if (pendingEliminations.length > 0) {
+        const eliminated = pendingEliminations.splice(0);
+        showEliminatedModal(eliminated[0]);
+      }
+    } else {
+      pendingEliminations.length = 0;
+      showVictoryModal();
+    }
+    btnEnd.disabled = false;
+    btnEnd.textContent = 'End Turn';
+    updateHUD(); render();
+  };
+
+  function bootRender() {
+    if (window.innerHeight < 100) {
+      document.getElementById('app').style.minHeight = '560px';
+    }
+    resizeCanvas();
+    updateHUD();
+    render();
+  }
+  bootRender();
+  showMenuModal();
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(bootRender);
+})();
+</script>
+</body>
+</html>
