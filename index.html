@@ -1415,37 +1415,36 @@
     };
 
     const getTerrainTile = (terrain, variant) => {
-      const key = `t32_${terrain}_${variant}`;
+      const key = `t24_${terrain}_${variant}`;
       if (cache.has(key)) return cache.get(key);
-      const c = mkCanvas(32, 32), g = c.getContext('2d');
+      const c = mkCanvas(24, 24), g = c.getContext('2d');
       const r = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
 
       if (terrain === 'PLAINS') {
         const base = ['#74a641', '#78ab44', '#70a13e', '#76a842'][variant % 4];
-        r(0, 0, 32, 32, base);
-        if (variant === 0) { r(6, 10, 3, 1, '#84b84f'); r(21, 20, 3, 1, '#689639'); r(14, 25, 2, 1, '#84b84f'); }
-        else if (variant === 1) { r(19, 8, 3, 1, '#84b84f'); r(9, 22, 1, 1, '#e6db74'); r(24, 16, 2, 1, '#689639'); }
-        else if (variant === 2) { r(5, 18, 3, 1, '#689639'); r(22, 12, 2, 1, '#84b84f'); r(13, 6, 2, 1, '#689639'); }
-        else { r(13, 7, 3, 1, '#689639'); r(20, 24, 1, 1, '#dce8c8'); r(7, 14, 2, 1, '#84b84f'); }
+        r(0, 0, 24, 24, base);
+        if (variant === 0) { r(5, 8, 2, 1, '#84b84f'); r(16, 15, 2, 1, '#689639'); }
+        else if (variant === 1) { r(14, 6, 2, 1, '#84b84f'); r(7, 17, 1, 1, '#e6db74'); }
+        else if (variant === 2) { r(4, 14, 2, 1, '#689639'); r(17, 9, 1, 1, '#84b84f'); }
+        else { r(10, 5, 2, 1, '#689639'); r(15, 18, 1, 1, '#dce8c8'); }
       } else if (terrain === 'WOODS') {
         const floor = ['#2d5e32', '#2a592f', '#306335', '#2c5b31'][variant % 4];
-        r(0, 0, 32, 32, floor);
-        r(3, 22, 10, 5, '#254e29'); r(17, 7, 9, 5, '#254e29');
+        r(0, 0, 24, 24, floor);
+        r(2, 16, 8, 4, '#254e29'); r(13, 5, 7, 4, '#254e29');
         const drawTree = (cx, cy) => {
-          r(cx - 1, cy + 8, 3, 4, '#4a352c'); r(cx, cy + 8, 1, 4, '#6d4c41');
-          r(cx - 5, cy + 6, 11, 2, '#1f4723');
-          r(cx - 4, cy + 3, 9, 3, '#2d6332');
-          r(cx - 3, cy + 1, 7, 2, '#3b7a40');
-          r(cx - 2, cy - 1, 5, 2, '#4d9152');
-          r(cx - 1, cy - 2, 3, 1, '#66bb6a');
+          r(cx - 1, cy + 6, 2, 3, '#4a352c');
+          r(cx - 4, cy + 4, 8, 2, '#1f4723');
+          r(cx - 3, cy + 2, 6, 2, '#2d6332');
+          r(cx - 2, cy, 4, 2, '#3b7a40');
+          r(cx - 1, cy - 1, 2, 1, '#4d9152');
         };
-        if (variant === 0) { drawTree(10, 8); drawTree(22, 16); }
-        else if (variant === 1) { drawTree(19, 8); drawTree(10, 17); }
-        else if (variant === 2) { drawTree(15, 12); }
-        else { drawTree(9, 14); drawTree(22, 9); }
+        if (variant === 0) { drawTree(7, 6); drawTree(16, 12); }
+        else if (variant === 1) { drawTree(14, 6); drawTree(7, 13); }
+        else if (variant === 2) { drawTree(11, 9); }
+        else { drawTree(6, 11); drawTree(16, 7); }
       } else if (terrain === 'MOUNTAINS') {
-        r(0, 0, 32, 32, '#4b5f6a');
-        r(0, 25, 32, 7, '#35454e');
+        r(0, 0, 24, 24, '#4b5f6a');
+        r(0, 19, 24, 5, '#35454e');
         const drawPeak = (cx, baseY, h, snowH) => {
           for (let i = 0; i < h; i++) {
             const y = baseY - h + i;
@@ -1455,62 +1454,40 @@
           }
           r(cx - h, baseY, h * 2 + 1, 1, '#2b3840');
         };
-        if (variant % 2 === 0) {
-          drawPeak(10, 25, 11, 3);
-          drawPeak(20, 27, 15, 4);
-        } else {
-          drawPeak(21, 25, 11, 3);
-          drawPeak(12, 27, 15, 4);
-        }
+        if (variant % 2 === 0) { drawPeak(7, 19, 8, 2); drawPeak(15, 20, 11, 3); }
+        else { drawPeak(16, 19, 8, 2); drawPeak(9, 20, 11, 3); }
       } else {
         const base = ['#dde7ed', '#e2ebf0', '#d8e3ea', '#e6eef3'][variant % 4];
-        r(0, 0, 32, 32, base);
-        if (variant === 0) {
-          r(0, 0, 14, 8, '#e6eff4'); r(18, 21, 14, 11, '#d2dfe7');
-        } else if (variant === 1) {
-          r(16, 0, 16, 11, '#eaf2f6'); r(0, 20, 12, 12, '#d3e0e8');
-          r(23, 7, 1, 1, '#b3e5fc');
-        } else if (variant === 2) {
-          r(3, 11, 13, 10, '#e3ecf1'); r(20, 3, 9, 9, '#cfdde6');
-        } else {
-          r(11, 16, 16, 10, '#ebf3f7'); r(2, 3, 9, 8, '#d4e1e9');
-          r(8, 23, 1, 1, '#b3e5fc');
-        }
+        r(0, 0, 24, 24, base);
+        if (variant === 0) { r(0, 0, 10, 6, '#e6eff4'); r(14, 16, 10, 8, '#d2dfe7'); }
+        else if (variant === 1) { r(12, 0, 12, 8, '#eaf2f6'); r(0, 15, 9, 9, '#d3e0e8'); r(17, 5, 1, 1, '#b3e5fc'); }
+        else if (variant === 2) { r(2, 8, 10, 8, '#e3ecf1'); r(15, 2, 7, 7, '#cfdde6'); }
+        else { r(8, 12, 12, 8, '#ebf3f7'); r(1, 2, 7, 6, '#d4e1e9'); r(6, 17, 1, 1, '#b3e5fc'); }
       }
       cache.set(key, c);
       return c;
     };
 
     const getTownSprite = (owner) => {
-      const key = `town32_${owner || 'NEU'}`;
+      const key = `town24_${owner || 'NEU'}`;
       if (cache.has(key)) return cache.get(key);
-      const c = mkCanvas(32, 32), g = c.getContext('2d');
+      const c = mkCanvas(24, 24), g = c.getContext('2d');
       const r = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
       const flag = owner ? CONFIG.FACTIONS[owner].color : '#90a4ae';
       const flagHi = owner ? '#ffffff' : '#cfd8dc';
 
-      r(4, 27, 24, 3, 'rgba(0,0,0,0.35)');
-      // Banner pole & waving flag
-      r(15, 3, 1, 9, '#cfd8dc');
-      r(16, 3, 8, 5, flag);
-      r(17, 4, 3, 1, flagHi);
-      // Central keep tower
-      r(11, 9, 10, 18, '#90a4ae'); r(12, 10, 4, 17, '#b0bec5');
-      r(11, 8, 2, 2, '#b0bec5'); r(15, 8, 2, 2, '#b0bec5'); r(19, 8, 2, 2, '#90a4ae');
-      // Twin flanking towers
-      r(4, 12, 7, 15, '#78909c'); r(5, 13, 3, 14, '#b0bec5');
-      r(4, 10, 2, 2, '#b0bec5'); r(8, 10, 3, 2, '#90a4ae');
-      r(21, 12, 7, 15, '#78909c'); r(22, 13, 3, 14, '#90a4ae');
-      r(21, 10, 3, 2, '#b0bec5'); r(26, 10, 2, 2, '#78909c');
-      // Battlement wall
-      r(9, 16, 14, 11, '#90a4ae'); r(10, 17, 12, 1, '#cfd8dc');
-      // Torchlit windows
-      r(7, 16, 1, 3, '#ffd54f'); r(24, 16, 1, 3, '#ffd54f');
-      r(15, 12, 2, 3, '#ffca28');
-      // Arched portcullis gate
-      r(12, 20, 8, 7, '#263238'); r(13, 19, 6, 1, '#263238');
-      r(14, 20, 1, 7, '#455a64'); r(17, 20, 1, 7, '#455a64');
-      r(12, 23, 8, 1, '#455a64');
+      r(3, 20, 18, 2, 'rgba(0,0,0,0.35)');
+      r(11, 2, 1, 7, '#cfd8dc'); r(12, 2, 6, 4, flag); r(13, 3, 2, 1, flagHi);
+      r(8, 7, 8, 13, '#90a4ae'); r(9, 8, 3, 12, '#b0bec5');
+      r(8, 6, 2, 2, '#b0bec5'); r(11, 6, 2, 2, '#b0bec5'); r(14, 6, 2, 2, '#90a4ae');
+      r(3, 9, 5, 11, '#78909c'); r(4, 10, 2, 10, '#b0bec5');
+      r(3, 8, 2, 2, '#b0bec5'); r(6, 8, 2, 2, '#90a4ae');
+      r(16, 9, 5, 11, '#78909c'); r(17, 10, 2, 10, '#90a4ae');
+      r(16, 8, 2, 2, '#b0bec5'); r(19, 8, 2, 2, '#78909c');
+      r(7, 12, 10, 8, '#90a4ae'); r(8, 13, 8, 1, '#cfd8dc');
+      r(5, 12, 1, 2, '#ffd54f'); r(18, 12, 1, 2, '#ffd54f'); r(11, 9, 2, 2, '#ffca28');
+      r(9, 15, 6, 5, '#263238'); r(10, 14, 4, 1, '#263238');
+      r(11, 15, 1, 5, '#455a64'); r(13, 15, 1, 5, '#455a64'); r(9, 17, 6, 1, '#455a64');
 
       const out = addOutline(c, '#0e1218');
       cache.set(key, out);
@@ -1519,50 +1496,48 @@
 
     const FLYERS = new Set(['EMP_EAGLE', 'SYL_PIXIE', 'SYL_DRAGON', 'UND_BAT']);
 
-    const drawUnit32 = (type) => {
-      const c = mkCanvas(32, 32), g = c.getContext('2d');
-      const S = 32 / 24;
-      const sx = (v) => Math.round(v * S);
-      const r = (x, y, w, h, col) => {
-        g.fillStyle = col;
-        g.fillRect(sx(x), sx(y), Math.max(1, sx(x + w) - sx(x)), Math.max(1, sx(y + h) - sx(y)));
-      };
-      const p = (x, y, col) => { g.fillStyle = col; g.fillRect(sx(x), sx(y), 1, 1); };
+    const drawUnit24 = (type) => {
+      const c = mkCanvas(24, 24), g = c.getContext('2d');
+      const r = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
+      const p = (x, y, col) => { g.fillStyle = col; g.fillRect(x, y, 1, 1); };
       const line = (x0, y0, x1, y1, col) => {
         g.fillStyle = col;
-        const ax = sx(x0), ay = sx(y0), bx = sx(x1), by = sx(y1);
-        const steps = Math.max(Math.abs(bx - ax), Math.abs(by - ay));
+        const steps = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
         for (let i = 0; i <= steps; i++) {
           const t = steps ? i / steps : 0;
-          g.fillRect(Math.round(ax + (bx - ax) * t), Math.round(ay + (by - ay) * t), 1, 1);
+          g.fillRect(Math.round(x0 + (x1 - x0) * t), Math.round(y0 + (y1 - y0) * t), 1, 1);
         }
       };
 
       switch (type) {
-        case 'EMP_SCOUT':
-          r(10, 3, 4, 1, '#1e88e5'); r(9, 4, 6, 3, '#1565c0'); r(10, 5, 4, 2, '#101820'); p(11, 6, '#80d8ff'); p(13, 6, '#80d8ff');
-          r(9, 7, 6, 2, '#1e3a5f'); r(8, 9, 7, 5, '#1976d2'); r(7, 11, 2, 5, '#1565c0');
-          r(10, 14, 2, 4, '#263238'); r(13, 14, 2, 4, '#263238'); r(9, 18, 3, 2, '#1a202c'); r(13, 18, 3, 2, '#1a202c');
+        case 'EMP_SCOUT': // Hooded leather-armored ranger with belt, boots & angled dagger
+          r(10, 3, 4, 1, '#1e88e5'); r(9, 4, 6, 3, '#1565c0'); r(10, 6, 4, 2, '#263238'); // shadowed hood (no dot eyes)
+          r(8, 8, 8, 2, '#1e3a5f'); r(9, 10, 6, 4, '#5d4037'); r(9, 13, 6, 1, '#d7ccc8'); // leather jerkin & belt
+          r(7, 9, 2, 7, '#1565c0'); // flowing side cloak
+          r(9, 14, 2, 3, '#37474f'); r(13, 14, 2, 3, '#37474f'); // trousers
+          r(9, 17, 2, 3, '#3e2723'); r(13, 17, 2, 3, '#3e2723'); // leather boots
           line(15, 11, 19, 7, '#eceff1'); p(19, 7, '#ffffff');
           break;
-        case 'EMP_GUARD':
+        case 'EMP_GUARD': // Steel-armored halberdier with pauldrons, belt, greaves & tower shield
           line(18, 2, 18, 20, '#8d6e63'); r(17, 2, 3, 4, '#eceff1'); p(20, 3, '#ffffff');
-          r(10, 4, 5, 3, '#cfd8dc'); r(11, 3, 3, 1, '#1e88e5'); r(10, 7, 5, 2, '#ffcc80');
-          r(9, 9, 6, 6, '#1976d2'); r(11, 10, 2, 4, '#ffd54f');
+          r(10, 4, 5, 3, '#b0bec5'); r(11, 3, 3, 1, '#1e88e5'); r(10, 7, 5, 2, '#37474f'); // visored steel helm
+          r(8, 9, 8, 2, '#cfd8dc'); // steel pauldrons
+          r(9, 10, 6, 4, '#1976d2'); r(11, 10, 2, 3, '#ffd54f'); r(9, 14, 6, 1, '#4e342e'); // tabard & belt
           r(4, 8, 5, 8, '#1565c0'); r(5, 9, 3, 6, '#eceff1'); r(6, 10, 1, 4, '#1e88e5');
-          r(9, 15, 2, 5, '#546e7a'); r(13, 15, 2, 5, '#546e7a');
+          r(9, 15, 2, 5, '#78909c'); r(13, 15, 2, 5, '#78909c'); r(9, 18, 2, 2, '#455a64'); r(13, 18, 2, 2, '#455a64');
           break;
-        case 'EMP_PALADIN':
+        case 'EMP_PALADIN': // Winged-helm armored Paladin: steel plate, gold trim, belt, royal cape & greatsword
           r(5, 9, 12, 9, '#1565c0'); r(4, 13, 3, 6, '#0d47a1');
           line(15, 9, 20, 2, '#ffd54f'); line(16, 9, 20, 3, '#fff9c4'); r(14, 9, 4, 1, '#ff8f00');
           p(7, 3, '#ffffff'); p(8, 4, '#ffffff'); p(15, 4, '#ffffff'); p(16, 3, '#ffffff');
-          r(9, 3, 6, 4, '#ffd54f'); r(10, 5, 4, 2, '#263238'); p(11, 6, '#80d8ff'); p(13, 6, '#80d8ff');
-          r(9, 7, 6, 8, '#eceff1'); r(10, 8, 4, 5, '#ffd54f'); r(11, 9, 2, 3, '#1976d2');
-          r(9, 15, 2, 5, '#cfd8dc'); r(13, 15, 2, 5, '#cfd8dc');
+          r(9, 3, 6, 3, '#ffd54f'); r(10, 6, 4, 2, '#263238'); // closed visor helm
+          r(8, 8, 8, 2, '#ffd54f'); // golden pauldrons
+          r(9, 9, 6, 5, '#eceff1'); r(11, 10, 2, 3, '#1976d2'); r(9, 14, 6, 1, '#ff8f00'); // breastplate & gold belt
+          r(9, 15, 2, 5, '#b0bec5'); r(13, 15, 2, 5, '#b0bec5'); r(9, 18, 2, 2, '#ffd54f'); r(13, 18, 2, 2, '#ffd54f');
           break;
         case 'EMP_KNIGHT':
           line(16, 2, 16, 12, '#eceff1'); r(17, 2, 5, 3, '#1e88e5'); r(17, 3, 4, 1, '#ffd54f');
-          r(10, 3, 4, 3, '#1e88e5'); r(11, 4, 2, 2, '#eceff1');
+          r(10, 3, 4, 3, '#cfd8dc'); r(11, 2, 2, 1, '#1e88e5');
           r(8, 6, 6, 5, '#1e88e5'); r(10, 7, 2, 3, '#ffd54f');
           r(3, 9, 4, 3, '#8d6e63'); r(2, 10, 3, 2, '#a1887f');
           r(5, 11, 13, 5, '#6d4c41'); r(6, 11, 10, 3, '#1976d2'); r(6, 14, 10, 1, '#ffd54f');
@@ -1581,13 +1556,14 @@
           r(10, 6, 4, 6, '#43a047'); r(9, 11, 6, 3, '#81c784');
           r(10, 14, 1, 2, '#ffe0b2'); r(13, 14, 1, 2, '#ffe0b2');
           break;
-        case 'SYL_ELF':
+        case 'SYL_ELF': // Forest archer with leather chestguard, belt, quiver & boots (no pyjamas)
           p(11, 2, '#2e7d32'); r(10, 3, 4, 2, '#2e7d32'); r(9, 5, 6, 2, '#43a047');
           r(10, 7, 4, 2, '#ffe0b2');
-          r(9, 9, 5, 6, '#2e7d32'); r(10, 10, 3, 4, '#66bb6a');
+          r(8, 9, 6, 2, '#2e7d32'); r(9, 10, 5, 3, '#6d4c41'); r(9, 13, 5, 1, '#ffd54f'); // leather chest & belt
+          r(9, 14, 2, 3, '#2e7d32'); r(12, 14, 2, 3, '#2e7d32'); // leggings
+          r(9, 17, 2, 3, '#4e342e'); r(12, 17, 2, 3, '#4e342e'); // boots
           line(16, 5, 18, 10, '#8d6e63'); line(18, 10, 16, 16, '#8d6e63');
           line(13, 10, 19, 10, '#eceff1');
-          r(9, 15, 2, 5, '#4e342e'); r(12, 15, 2, 5, '#4e342e');
           break;
         case 'SYL_TROLL':
           line(18, 4, 19, 17, '#4e342e'); r(17, 3, 4, 5, '#6d4c41'); r(18, 2, 2, 2, '#689f38');
@@ -1597,7 +1573,7 @@
           break;
         case 'SYL_UNICORN':
           line(17, 2, 14, 5, '#ff8f00'); p(17, 2, '#ffd54f'); p(16, 3, '#ffd54f');
-          r(12, 5, 5, 3, '#ffffff'); p(15, 6, '#263238');
+          r(12, 5, 5, 3, '#ffffff');
           r(9, 6, 4, 5, '#00897b'); r(10, 7, 3, 3, '#26a69a');
           r(6, 10, 10, 5, '#eceff1'); r(7, 10, 8, 3, '#ffffff'); r(6, 14, 10, 1, '#b0bec5');
           line(5, 11, 3, 15, '#00897b');
@@ -1617,12 +1593,14 @@
           r(9, 5, 6, 6, '#311b92'); p(9, 3, '#6a1b9a'); p(14, 3, '#6a1b9a');
           p(10, 7, '#ff1744'); p(13, 7, '#ff1744');
           break;
-        case 'UND_SKEL':
-          line(17, 4, 17, 14, '#b0bec5'); p(17, 4, '#ffffff'); r(16, 13, 3, 1, '#546e7a');
-          r(10, 4, 4, 5, '#ffffff'); p(10, 6, '#080a0f'); p(13, 6, '#080a0f'); p(11, 8, '#080a0f'); p(13, 8, '#080a0f');
-          r(8, 9, 8, 6, '#4a148c'); r(10, 9, 4, 6, '#eceff1'); r(10, 11, 4, 1, '#080a0f'); r(10, 13, 4, 1, '#080a0f');
-          r(5, 10, 3, 5, '#4a148c'); r(6, 11, 1, 3, '#cfd8dc');
-          r(10, 15, 1, 5, '#eceff1'); r(13, 15, 1, 5, '#eceff1');
+        case 'UND_SKEL': // Scary reaper-skeleton: hollow skull with red pinpricks, ragged shroud & curved scythe
+          line(17, 3, 17, 20, '#5d4037'); line(17, 3, 12, 2, '#cfd8dc'); line(12, 2, 10, 4, '#eceff1'); // wicked curved scythe
+          r(8, 4, 6, 5, '#eceff1'); r(9, 4, 4, 2, '#ffffff');
+          r(9, 6, 2, 2, '#080a0f'); r(12, 6, 2, 2, '#080a0f'); p(9, 6, '#ff1744'); p(12, 6, '#ff1744'); // hollow eyes + eerie red glints
+          r(9, 8, 4, 1, '#080a0f'); p(10, 8, '#eceff1'); p(12, 8, '#eceff1'); // grinning skull teeth
+          r(6, 9, 10, 8, '#311b92'); r(7, 15, 2, 3, '#311b92'); r(13, 15, 2, 3, '#311b92'); // ragged reaper shroud
+          r(9, 9, 4, 6, '#cfd8dc'); r(9, 11, 4, 1, '#080a0f'); r(9, 13, 4, 1, '#080a0f'); // exposed ribcage
+          r(9, 16, 1, 4, '#eceff1'); r(12, 16, 1, 4, '#eceff1'); // bony legs
           break;
         case 'UND_GHOUL':
           r(10, 5, 5, 4, '#9ccc65'); p(11, 7, '#ff1744'); p(13, 7, '#ff1744');
@@ -1653,22 +1631,22 @@
       }
 
       const outlined = addOutline(c, '#080a0f');
-      const finalC = mkCanvas(32, 32), fg = finalC.getContext('2d');
+      const finalC = mkCanvas(24, 24), fg = finalC.getContext('2d');
       if (FLYERS.has(type)) {
         fg.fillStyle = 'rgba(0,0,0,0.45)';
-        fg.fillRect(9, 28, 14, 2);
+        fg.fillRect(7, 21, 10, 2);
       } else {
         fg.fillStyle = 'rgba(0,0,0,0.42)';
-        fg.fillRect(8, 27, 16, 2);
+        fg.fillRect(6, 20, 12, 2);
       }
       fg.drawImage(outlined, 0, 0);
       return finalC;
     };
 
     const getUnitSprite = (type) => {
-      const key = `u32_${type}`;
+      const key = `u24_${type}`;
       if (cache.has(key)) return cache.get(key);
-      const c = drawUnit32(type);
+      const c = drawUnit24(type);
       cache.set(key, c);
       return c;
     };
