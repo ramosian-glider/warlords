@@ -57,7 +57,7 @@
   #map-wrap {
     flex: 1 1 0%; min-height: 200px; position: relative; overflow: hidden; background: #0d1014; touch-action: none;
   }
-  #game-canvas { display: block; width: 100%; height: 100%; }
+  #game-canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
   #toast {
     position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
     background: rgba(18, 21, 26, 0.92); border: 1px solid var(--border);
@@ -1418,56 +1418,57 @@
       const r = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
 
       if (terrain === 'PLAINS') {
-        r(0, 0, 24, 24, '#76ab3f');
-        r(0, 0, 24, 24, variant % 2 ? '#7cb342' : '#74a83d');
-        // Subtle grass tufts & clover
-        const tufts = [[3, 4], [14, 3], [8, 12], [18, 15], [4, 19], [13, 20]];
-        tufts.forEach(([tx, ty], i) => {
-          const ox = (tx + variant * 3) % 21, oy = (ty + variant * 2) % 21;
-          r(ox, oy, 2, 1, '#9ccc65');
-          r(ox + 1, oy + 1, 2, 1, '#5d8e2e');
-          if ((i + variant) % 3 === 0) r(ox + 2, oy - 1, 1, 1, '#aed581');
-        });
-        if (variant === 1) { r(6, 7, 1, 1, '#ffee58'); r(17, 11, 1, 1, '#fff59d'); }
-        if (variant === 2) { r(11, 6, 1, 1, '#f5f5f5'); r(5, 16, 2, 1, '#689f38'); }
-        if (variant === 3) { r(16, 6, 1, 1, '#ffca28'); r(9, 17, 1, 1, '#f5f5f5'); }
+        const base = ['#74a641', '#78ab44', '#70a13e', '#76a842'][variant % 4];
+        r(0, 0, 24, 24, base);
+        // Very subtle, sparse meadow texture so units and castles stand out
+        if (variant === 0) { r(5, 8, 2, 1, '#84b84f'); r(16, 15, 2, 1, '#689639'); }
+        else if (variant === 1) { r(14, 6, 2, 1, '#84b84f'); r(7, 17, 1, 1, '#e6db74'); }
+        else if (variant === 2) { r(4, 14, 2, 1, '#689639'); r(17, 9, 1, 1, '#84b84f'); }
+        else { r(10, 5, 2, 1, '#689639'); r(15, 18, 1, 1, '#dce8c8'); }
       } else if (terrain === 'WOODS') {
-        r(0, 0, 24, 24, '#295c2e');
-        r(2, 19, 6, 3, '#214d26'); r(13, 4, 7, 3, '#214d26');
-        const drawPine = (cx, cy) => {
-          r(cx - 1, cy + 7, 3, 3, '#4e342e'); r(cx, cy + 7, 1, 3, '#6d4c41');
-          r(cx - 4, cy + 5, 9, 2, '#1b4320'); r(cx - 3, cy + 3, 7, 2, '#2e6b34');
-          r(cx - 2, cy + 1, 5, 2, '#388e3c'); r(cx - 1, cy - 1, 3, 2, '#4caf50');
-          r(cx, cy - 2, 1, 1, '#81c784');
-          r(cx - 2, cy + 3, 2, 1, '#66bb6a'); r(cx - 3, cy + 5, 2, 1, '#388e3c');
+        // Softer, lower-contrast woodland with 1-2 trees per tile instead of dense 4-tree static
+        const floor = ['#2d5e32', '#2a592f', '#306335', '#2c5b31'][variant % 4];
+        r(0, 0, 24, 24, floor);
+        r(2, 16, 8, 4, '#254e29'); r(13, 5, 7, 4, '#254e29');
+        const drawTree = (cx, cy) => {
+          r(cx - 1, cy + 6, 2, 3, '#4a352c');
+          r(cx - 4, cy + 4, 8, 2, '#1f4723');
+          r(cx - 3, cy + 2, 6, 2, '#2d6332');
+          r(cx - 2, cy, 4, 2, '#3b7a40');
+          r(cx - 1, cy - 1, 2, 1, '#4d9152');
         };
-        const layouts = [
-          [[6, 4], [17, 5], [11, 12], [5, 14]],
-          [[12, 3], [5, 8], [18, 10], [11, 14]],
-          [[7, 3], [16, 6], [6, 13], [17, 14]],
-          [[10, 4], [18, 4], [5, 11], [14, 13]]
-        ];
-        layouts[variant % 4].forEach(([tx, ty]) => drawPine(tx, ty));
+        if (variant === 0) { drawTree(7, 6); drawTree(16, 12); }
+        else if (variant === 1) { drawTree(14, 6); drawTree(7, 13); }
+        else if (variant === 2) { drawTree(11, 9); }
+        else { drawTree(6, 11); drawTree(16, 7); }
       } else if (terrain === 'MOUNTAINS') {
-        r(0, 0, 24, 24, '#546e7a');
-        r(0, 18, 24, 6, '#455a64');
+        r(0, 0, 24, 24, '#546b75');
+        r(0, 17, 24, 7, '#465b64');
         const drawPeak = (cx, baseY, h) => {
           for (let i = 0; i < h; i++) {
             const y = baseY - h + i;
-            const leftW = i + 1, rightW = i;
-            r(cx - i, y, leftW, 1, i < 3 ? '#eceff1' : (i % 3 === 0 ? '#90a4ae' : '#78909c'));
-            if (rightW > 0) r(cx + 1, y, rightW, 1, i < 3 ? '#cfd8dc' : (i % 2 === 0 ? '#37474f' : '#455a64'));
+            r(cx - i, y, i + 1, 1, i < 3 ? '#dde6ea' : '#7b909a');
+            if (i > 0) r(cx + 1, y, i, 1, i < 3 ? '#c2cfd6' : '#3d4f58');
           }
-          r(cx, baseY - h, 1, 1, '#ffffff');
+          r(cx, baseY - h, 1, 1, '#eef3f6');
         };
-        if (variant % 2 === 0) { drawPeak(7, 20, 13); drawPeak(16, 22, 16); }
-        else { drawPeak(16, 19, 12); drawPeak(8, 22, 16); }
+        if (variant % 2 === 0) { drawPeak(8, 20, 11); drawPeak(16, 21, 14); }
+        else { drawPeak(15, 19, 11); drawPeak(8, 21, 14); }
       } else {
-        r(0, 0, 24, 24, '#dce8ee');
-        r(1, 3, 9, 3, '#f5fafc'); r(12, 13, 10, 3, '#f5fafc');
-        r(2, 6, 8, 1, '#b8cbd4'); r(13, 16, 9, 1, '#b8cbd4');
-        r(3, 17, 6, 2, '#eef5f8'); r(14, 5, 7, 2, '#eef5f8');
-        if (variant % 2 === 1) { r(19, 3, 2, 1, '#81d4fa'); r(5, 12, 1, 2, '#b3e5fc'); }
+        // Cohesive snow/ice tundra with soft tonal shifts and no repeating horizontal dash bars
+        const base = ['#dde7ed', '#e2ebf0', '#d8e3ea', '#e6eef3'][variant % 4];
+        r(0, 0, 24, 24, base);
+        if (variant === 0) {
+          r(0, 0, 10, 6, '#e6eff4'); r(14, 16, 10, 8, '#d2dfe7');
+        } else if (variant === 1) {
+          r(12, 0, 12, 8, '#eaf2f6'); r(0, 15, 9, 9, '#d3e0e8');
+          r(17, 5, 1, 1, '#b3e5fc');
+        } else if (variant === 2) {
+          r(2, 8, 10, 8, '#e3ecf1'); r(15, 2, 7, 7, '#cfdde6');
+        } else {
+          r(8, 12, 12, 8, '#ebf3f7'); r(1, 2, 7, 6, '#d4e1e9');
+          r(6, 17, 1, 1, '#b3e5fc');
+        }
       }
       cache.set(key, c);
       return c;
@@ -1684,12 +1685,21 @@
     ctx.imageSmoothingEnabled = !pixelArtMode;
     ctx.clearRect(0, 0, rect.width, rect.height);
     if (!gameState) return;
-    const ts = CONFIG.TILE_SIZE * camera.zoom;
+    const ts = pixelArtMode ? Math.max(12, Math.round(CONFIG.TILE_SIZE * camera.zoom)) : (CONFIG.TILE_SIZE * camera.zoom);
+    const camX = pixelArtMode ? Math.round(camera.x) : camera.x;
+    const camY = pixelArtMode ? Math.round(camera.y) : camera.y;
+    const mapW = gameState.map.width * ts;
+    const mapH = gameState.map.height * ts;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(camX, camY, mapW, mapH);
+    ctx.clip();
 
     for (let y = 0; y < gameState.map.height; y++) {
       for (let x = 0; x < gameState.map.width; x++) {
         const tile = getTile(gameState, x, y);
-        const px = camera.x + x * ts, py = camera.y + y * ts;
+        const px = camX + x * ts, py = camY + y * ts;
         if (px + ts < 0 || py + ts < 0 || px > rect.width || py > rect.height) continue;
 
         if (pixelArtMode) {
@@ -1699,9 +1709,9 @@
           ctx.fillStyle = CONFIG.TERRAIN[tile.terrain].color;
           ctx.fillRect(px, py, ts, ts);
         }
-        ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+        ctx.strokeStyle = pixelArtMode ? 'rgba(0,0,0,0.12)' : 'rgba(0,0,0,0.18)';
         ctx.lineWidth = 1;
-        ctx.strokeRect(px, py, ts, ts);
+        ctx.strokeRect(px + 0.5, py + 0.5, ts - 1, ts - 1);
 
         if (reachableCache) {
           if (reachableCache.has(`${x},${y}`)) {
@@ -1723,7 +1733,8 @@
         const town = getTownAt(gameState, x, y);
         if (town) {
           if (pixelArtMode) {
-            ctx.drawImage(PixelArt.getTownSprite(town.owner), px + ts * 0.06, py + ts * 0.06, ts * 0.88, ts * 0.88);
+            const pad = Math.round(ts * 0.06);
+            ctx.drawImage(PixelArt.getTownSprite(town.owner), px + pad, py + pad, ts - pad * 2, ts - pad * 2);
           } else {
             ctx.fillStyle = town.owner ? CONFIG.FACTIONS[town.owner].color : '#757575';
             ctx.beginPath();
@@ -1743,39 +1754,64 @@
           if (anim) {
             const t = Math.min(1, (performance.now() - anim.start) / anim.duration);
             const ease = t * (2 - t);
-            drawX = camera.x + (anim.fromX + (anim.toX - anim.fromX) * ease) * ts;
-            drawY = camera.y + (anim.fromY + (anim.toY - anim.fromY) * ease) * ts;
+            drawX = camX + (anim.fromX + (anim.toX - anim.fromX) * ease) * ts;
+            drawY = camY + (anim.fromY + (anim.toY - anim.fromY) * ease) * ts;
+            if (pixelArtMode) { drawX = Math.round(drawX); drawY = Math.round(drawY); }
             if (t >= 1) animatingUnits.delete(top.id);
           }
           if (pixelArtMode) {
-            ctx.drawImage(PixelArt.getUnitSprite(top.type), drawX + ts * 0.07, drawY + ts * 0.06, ts * 0.86, ts * 0.86);
+            // Subtle dark backing so unit silhouettes pop over castles, snow, mountains, or trees
+            ctx.fillStyle = 'rgba(12, 16, 24, 0.38)';
+            ctx.beginPath();
+            ctx.arc(drawX + ts * 0.5, drawY + ts * 0.52, ts * 0.34, 0, Math.PI * 2);
+            ctx.fill();
+            const uSize = Math.round(ts * 0.84);
+            const uOffX = Math.round((ts - uSize) / 2);
+            const uOffY = Math.round(ts * 0.06);
+            ctx.drawImage(PixelArt.getUnitSprite(top.type), drawX + uOffX, drawY + uOffY, uSize, uSize);
           } else {
             ctx.font = `${Math.floor(ts * 0.55)}px sans-serif`;
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             ctx.fillText(def.emoji, drawX + ts * 0.5, drawY + ts * 0.5);
           }
 
+          // Faction indicator dot with crisp dark outline for contrast on any terrain
+          const dotX = drawX + ts * 0.2, dotY = drawY + ts * 0.2, dotR = Math.max(3, ts * 0.12);
           ctx.fillStyle = top.owner === 'NEUTRAL' ? '#9e9e9e' : CONFIG.FACTIONS[top.owner].color;
           ctx.beginPath();
-          ctx.arc(drawX + ts * 0.2, drawY + ts * 0.2, ts * 0.12, 0, Math.PI * 2);
+          ctx.arc(dotX, dotY, dotR, 0, Math.PI * 2);
           ctx.fill();
+          ctx.strokeStyle = '#12161f';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
 
           if (units.length > 1) {
-            ctx.fillStyle = 'rgba(0,0,0,0.75)';
-            ctx.fillRect(drawX + ts * 0.58, drawY + ts * 0.62, ts * 0.38, ts * 0.32);
+            const bx = Math.round(drawX + ts * 0.55), by = Math.round(drawY + ts * 0.58);
+            const bw = Math.round(ts * 0.40), bh = Math.round(ts * 0.32);
+            ctx.fillStyle = 'rgba(12, 16, 24, 0.88)';
+            ctx.fillRect(bx, by, bw, bh);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(bx + 0.5, by + 0.5, bw - 1, bh - 1);
             ctx.fillStyle = '#fff';
-            ctx.font = `bold ${Math.floor(ts * 0.24)}px sans-serif`;
-            ctx.fillText(`×${units.length}`, drawX + ts * 0.77, drawY + ts * 0.78);
+            ctx.font = `bold ${Math.max(9, Math.floor(ts * 0.24))}px sans-serif`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(`×${units.length}`, bx + bw / 2, by + bh / 2 + 0.5);
           }
 
           const hpPct = Math.max(0, top.hp / getUnitMaxHp(top));
+          const hpX = Math.round(drawX + 4), hpY = Math.round(drawY + ts - 6), hpW = Math.round(ts - 8);
           ctx.fillStyle = '#111';
-          ctx.fillRect(drawX + 4, drawY + ts - 6, ts - 8, 4);
+          ctx.fillRect(hpX, hpY, hpW, 4);
           ctx.fillStyle = hpPct > 0.5 ? '#4caf50' : hpPct > 0.25 ? '#ff9800' : '#f44336';
-          ctx.fillRect(drawX + 4, drawY + ts - 6, (ts - 8) * hpPct, 4);
+          ctx.fillRect(hpX, hpY, Math.round(hpW * hpPct), 4);
         }
       }
     }
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(camX + 0.5, camY + 0.5, mapW - 1, mapH - 1);
   }
 
   const infoDropdown = document.getElementById('game-info-dropdown');
