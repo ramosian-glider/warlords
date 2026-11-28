@@ -57,7 +57,7 @@
   #map-wrap {
     flex: 1 1 0%; min-height: 200px; position: relative; overflow: hidden; background: #0d1014; touch-action: none;
   }
-  #game-canvas { display: block; width: 100%; height: 100%; }
+  #game-canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
   #toast {
     position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
     background: rgba(18, 21, 26, 0.92); border: 1px solid var(--border);
@@ -1380,6 +1380,315 @@
     animFrameId = requestAnimationFrame(step);
   }
 
+  let pixelArtMode = (() => {
+    try { return localStorage.getItem('emoji_warlords_pixel_mode') === '1'; } catch (e) { return false; }
+  })();
+
+  const PixelArt = (() => {
+    const cache = new Map();
+    const mkCanvas = (w, h) => {
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      return c;
+    };
+    const addOutline = (c, color = '#080a0f') => {
+      const w = c.width, h = c.height, g = c.getContext('2d');
+      const src = g.getImageData(0, 0, w, h).data;
+      const out = mkCanvas(w, h), og = out.getContext('2d');
+      og.fillStyle = color;
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          if (src[(y * w + x) * 4 + 3] > 0) continue;
+          let adj = false;
+          for (let dy = -1; dy <= 1 && !adj; dy++) {
+            for (let dx = -1; dx <= 1 && !adj; dx++) {
+              if (dx === 0 && dy === 0) continue;
+              const nx = x + dx, ny = y + dy;
+              if (nx >= 0 && nx < w && ny >= 0 && ny < h && src[(ny * w + nx) * 4 + 3] > 0) adj = true;
+            }
+          }
+          if (adj) og.fillRect(x, y, 1, 1);
+        }
+      }
+      og.drawImage(c, 0, 0);
+      return out;
+    };
+
+    const getTerrainTile = (terrain, variant) => {
+      const key = `t24_${terrain}_${variant}`;
+      if (cache.has(key)) return cache.get(key);
+      const c = mkCanvas(24, 24), g = c.getContext('2d');
+      const r = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
+
+      if (terrain === 'PLAINS') {
+        const base = ['#74a641', '#78ab44', '#70a13e', '#76a842'][variant % 4];
+        r(0, 0, 24, 24, base);
+        if (variant === 0) { r(5, 8, 2, 1, '#84b84f'); r(16, 15, 2, 1, '#689639'); }
+        else if (variant === 1) { r(14, 6, 2, 1, '#84b84f'); r(7, 17, 1, 1, '#e6db74'); }
+        else if (variant === 2) { r(4, 14, 2, 1, '#689639'); r(17, 9, 1, 1, '#84b84f'); }
+        else { r(10, 5, 2, 1, '#689639'); r(15, 18, 1, 1, '#dce8c8'); }
+      } else if (terrain === 'WOODS') {
+        const floor = ['#2d5e32', '#2a592f', '#306335', '#2c5b31'][variant % 4];
+        r(0, 0, 24, 24, floor);
+        r(2, 16, 8, 4, '#254e29'); r(13, 5, 7, 4, '#254e29');
+        const drawTree = (cx, cy) => {
+          r(cx - 1, cy + 6, 2, 3, '#4a352c');
+          r(cx - 4, cy + 4, 8, 2, '#1f4723');
+          r(cx - 3, cy + 2, 6, 2, '#2d6332');
+          r(cx - 2, cy, 4, 2, '#3b7a40');
+          r(cx - 1, cy - 1, 2, 1, '#4d9152');
+        };
+        if (variant === 0) { drawTree(7, 6); drawTree(16, 12); }
+        else if (variant === 1) { drawTree(14, 6); drawTree(7, 13); }
+        else if (variant === 2) { drawTree(11, 9); }
+        else { drawTree(6, 11); drawTree(16, 7); }
+      } else if (terrain === 'MOUNTAINS') {
+        r(0, 0, 24, 24, '#4b5f6a');
+        r(0, 19, 24, 5, '#35454e');
+        const drawPeak = (cx, baseY, h, snowH) => {
+          for (let i = 0; i < h; i++) {
+            const y = baseY - h + i;
+            const isSnow = i < snowH;
+            r(cx - i, y, i + 1, 1, isSnow ? '#e4edf2' : '#859aa5');
+            if (i > 0) r(cx + 1, y, i, 1, isSnow ? '#c2d1da' : '#43555f');
+          }
+          r(cx - h, baseY, h * 2 + 1, 1, '#2b3840');
+        };
+        if (variant % 2 === 0) { drawPeak(7, 19, 8, 2); drawPeak(15, 20, 11, 3); }
+        else { drawPeak(16, 19, 8, 2); drawPeak(9, 20, 11, 3); }
+      } else {
+        const base = ['#dde7ed', '#e2ebf0', '#d8e3ea', '#e6eef3'][variant % 4];
+        r(0, 0, 24, 24, base);
+        if (variant === 0) { r(0, 0, 10, 6, '#e6eff4'); r(14, 16, 10, 8, '#d2dfe7'); }
+        else if (variant === 1) { r(12, 0, 12, 8, '#eaf2f6'); r(0, 15, 9, 9, '#d3e0e8'); r(17, 5, 1, 1, '#b3e5fc'); }
+        else if (variant === 2) { r(2, 8, 10, 8, '#e3ecf1'); r(15, 2, 7, 7, '#cfdde6'); }
+        else { r(8, 12, 12, 8, '#ebf3f7'); r(1, 2, 7, 6, '#d4e1e9'); r(6, 17, 1, 1, '#b3e5fc'); }
+      }
+      cache.set(key, c);
+      return c;
+    };
+
+    const getTownSprite = (owner) => {
+      const key = `town24_${owner || 'NEU'}`;
+      if (cache.has(key)) return cache.get(key);
+      const c = mkCanvas(24, 24), g = c.getContext('2d');
+      const r = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
+      const flag = owner ? CONFIG.FACTIONS[owner].color : '#90a4ae';
+      const flagHi = owner ? '#ffffff' : '#cfd8dc';
+
+      r(3, 20, 18, 2, 'rgba(0,0,0,0.35)');
+      r(11, 2, 1, 7, '#cfd8dc'); r(12, 2, 6, 4, flag); r(13, 3, 2, 1, flagHi);
+      r(8, 7, 8, 13, '#90a4ae'); r(9, 8, 3, 12, '#b0bec5');
+      r(8, 6, 2, 2, '#b0bec5'); r(11, 6, 2, 2, '#b0bec5'); r(14, 6, 2, 2, '#90a4ae');
+      r(3, 9, 5, 11, '#78909c'); r(4, 10, 2, 10, '#b0bec5');
+      r(3, 8, 2, 2, '#b0bec5'); r(6, 8, 2, 2, '#90a4ae');
+      r(16, 9, 5, 11, '#78909c'); r(17, 10, 2, 10, '#90a4ae');
+      r(16, 8, 2, 2, '#b0bec5'); r(19, 8, 2, 2, '#78909c');
+      r(7, 12, 10, 8, '#90a4ae'); r(8, 13, 8, 1, '#cfd8dc');
+      r(5, 12, 1, 2, '#ffd54f'); r(18, 12, 1, 2, '#ffd54f'); r(11, 9, 2, 2, '#ffca28');
+      r(9, 15, 6, 5, '#263238'); r(10, 14, 4, 1, '#263238');
+      r(11, 15, 1, 5, '#455a64'); r(13, 15, 1, 5, '#455a64'); r(9, 17, 6, 1, '#455a64');
+
+      const out = addOutline(c, '#0e1218');
+      cache.set(key, out);
+      return out;
+    };
+
+    const FLYERS = new Set(['EMP_EAGLE', 'SYL_PIXIE', 'SYL_DRAGON', 'UND_BAT']);
+
+    const drawUnit24 = (type) => {
+      const c = mkCanvas(24, 24), g = c.getContext('2d');
+      const r = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
+      const p = (x, y, col) => { g.fillStyle = col; g.fillRect(x, y, 1, 1); };
+      const line = (x0, y0, x1, y1, col) => {
+        g.fillStyle = col;
+        const steps = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+        for (let i = 0; i <= steps; i++) {
+          const t = steps ? i / steps : 0;
+          g.fillRect(Math.round(x0 + (x1 - x0) * t), Math.round(y0 + (y1 - y0) * t), 1, 1);
+        }
+      };
+
+      switch (type) {
+        case 'EMP_SCOUT': // Hooded leather-armored ranger with belt, boots & angled dagger
+          r(10, 3, 4, 1, '#1e88e5'); r(9, 4, 6, 3, '#1565c0'); r(10, 6, 4, 2, '#263238'); // shadowed hood (no dot eyes)
+          r(8, 8, 8, 2, '#1e3a5f'); r(9, 10, 6, 4, '#5d4037'); r(9, 13, 6, 1, '#d7ccc8'); // leather jerkin & belt
+          r(7, 9, 2, 7, '#1565c0'); // flowing side cloak
+          r(9, 14, 2, 3, '#37474f'); r(13, 14, 2, 3, '#37474f'); // trousers
+          r(9, 17, 2, 3, '#3e2723'); r(13, 17, 2, 3, '#3e2723'); // leather boots
+          line(15, 11, 19, 7, '#eceff1'); p(19, 7, '#ffffff');
+          break;
+        case 'EMP_GUARD': // Steel-armored halberdier with pauldrons, belt, greaves & tower shield
+          line(18, 2, 18, 20, '#8d6e63'); r(17, 2, 3, 4, '#eceff1'); p(20, 3, '#ffffff');
+          r(10, 4, 5, 3, '#b0bec5'); r(11, 3, 3, 1, '#1e88e5'); r(10, 7, 5, 2, '#37474f'); // visored steel helm
+          r(8, 9, 8, 2, '#cfd8dc'); // steel pauldrons
+          r(9, 10, 6, 4, '#1976d2'); r(11, 10, 2, 3, '#ffd54f'); r(9, 14, 6, 1, '#4e342e'); // tabard & belt
+          r(4, 8, 5, 8, '#1565c0'); r(5, 9, 3, 6, '#eceff1'); r(6, 10, 1, 4, '#1e88e5');
+          r(9, 15, 2, 5, '#78909c'); r(13, 15, 2, 5, '#78909c'); r(9, 18, 2, 2, '#455a64'); r(13, 18, 2, 2, '#455a64');
+          break;
+        case 'EMP_PALADIN': // Winged-helm armored Paladin (narrower helm): steel plate, gold trim, belt, royal cape & greatsword
+          r(5, 9, 11, 9, '#1565c0'); r(4, 13, 3, 6, '#0d47a1');
+          line(15, 9, 19, 4, '#ffd54f'); line(16, 9, 19, 5, '#fff9c4'); r(14, 9, 4, 1, '#ff8f00');
+          p(8, 3, '#ffffff'); p(9, 4, '#ffffff'); p(14, 4, '#ffffff'); p(15, 3, '#ffffff');
+          r(10, 3, 4, 3, '#ffd54f'); r(10, 6, 4, 2, '#263238'); // narrower closed visor helm
+          r(8, 8, 8, 2, '#ffd54f'); // golden pauldrons
+          r(9, 9, 6, 5, '#eceff1'); r(11, 10, 2, 3, '#1976d2'); r(9, 14, 6, 1, '#ff8f00'); // breastplate & gold belt
+          r(9, 15, 2, 5, '#b0bec5'); r(13, 15, 2, 5, '#b0bec5'); r(9, 18, 2, 2, '#ffd54f'); r(13, 18, 2, 2, '#ffd54f');
+          break;
+        case 'EMP_KNIGHT': // Heavy cavalry facing right with lance & banner streaming behind
+          line(8, 2, 8, 12, '#eceff1'); r(3, 2, 5, 3, '#1e88e5'); r(3, 3, 4, 1, '#ffd54f'); // rear banner
+          r(10, 3, 4, 3, '#cfd8dc'); r(11, 2, 2, 1, '#1e88e5');
+          r(9, 6, 6, 5, '#1e88e5'); r(11, 7, 2, 3, '#ffd54f');
+          line(5, 12, 2, 15, '#4e342e'); // horse tail on left
+          r(5, 11, 12, 5, '#6d4c41'); r(6, 11, 10, 3, '#1976d2'); r(6, 14, 10, 1, '#ffd54f'); // barded horse body
+          r(16, 8, 4, 4, '#8d6e63'); r(18, 9, 3, 2, '#a1887f'); // horse head facing right
+          r(6, 16, 2, 4, '#4e342e'); r(11, 16, 2, 4, '#4e342e'); r(15, 16, 2, 4, '#4e342e');
+          break;
+        case 'EMP_EAGLE': // Giant eagle gliding right with hooked golden beak
+          line(2, 4, 10, 8, '#6d4c41'); line(2, 5, 9, 9, '#8d6e63'); line(4, 7, 9, 10, '#4e342e');
+          line(20, 5, 13, 9, '#6d4c41'); line(20, 6, 14, 10, '#8d6e63');
+          r(9, 7, 5, 6, '#5d4037'); r(11, 3, 4, 4, '#ffffff'); p(14, 4, '#263238'); // white head facing right
+          r(15, 4, 2, 2, '#ffb300'); p(16, 6, '#ff8f00'); // hooked beak right
+          r(9, 13, 2, 3, '#ffb300'); r(13, 13, 2, 3, '#ffb300');
+          break;
+        case 'SYL_PIXIE': // Woodland pixie facing right with swept wings & glowing wand
+          r(3, 4, 7, 4, '#80deea'); r(4, 5, 5, 2, '#e0f7fa'); r(4, 8, 6, 3, '#4dd0e1'); // swept back wings
+          r(14, 5, 4, 3, '#80deea'); r(15, 6, 2, 1, '#e0f7fa'); // far wing
+          r(10, 3, 4, 3, '#ffe0b2'); r(9, 2, 4, 2, '#f06292'); p(9, 4, '#f06292');
+          r(10, 6, 4, 6, '#43a047'); r(9, 11, 6, 3, '#81c784');
+          r(10, 14, 1, 2, '#ffe0b2'); r(13, 14, 1, 2, '#ffe0b2');
+          line(14, 9, 19, 6, '#ffd54f'); p(19, 6, '#fff9c4'); // wand pointing right
+          break;
+        case 'SYL_ELF': // Forest archer with leather chestguard, belt, quiver & boots (no pyjamas)
+          p(11, 2, '#2e7d32'); r(10, 3, 4, 2, '#2e7d32'); r(9, 5, 6, 2, '#43a047');
+          r(10, 7, 4, 2, '#ffe0b2');
+          r(8, 9, 6, 2, '#2e7d32'); r(9, 10, 5, 3, '#6d4c41'); r(9, 13, 5, 1, '#ffd54f'); // leather chest & belt
+          r(9, 14, 2, 3, '#2e7d32'); r(12, 14, 2, 3, '#2e7d32'); // leggings
+          r(9, 17, 2, 3, '#4e342e'); r(12, 17, 2, 3, '#4e342e'); // boots
+          line(16, 5, 18, 10, '#8d6e63'); line(18, 10, 16, 16, '#8d6e63');
+          line(13, 10, 19, 10, '#eceff1');
+          break;
+        case 'SYL_TROLL':
+          line(18, 4, 19, 17, '#4e342e'); r(17, 3, 4, 5, '#6d4c41'); r(18, 2, 2, 2, '#689f38');
+          r(8, 5, 7, 4, '#6d4c41'); r(9, 5, 5, 2, '#558b2f'); p(11, 7, '#ffee58'); p(14, 7, '#ffee58');
+          r(5, 9, 12, 7, '#5d4037'); r(6, 9, 10, 3, '#689f38'); r(8, 12, 6, 4, '#795548');
+          r(6, 16, 4, 4, '#4e342e'); r(12, 16, 4, 4, '#4e342e');
+          break;
+        case 'SYL_UNICORN':
+          line(17, 2, 14, 5, '#ff8f00'); p(17, 2, '#ffd54f'); p(16, 3, '#ffd54f');
+          r(12, 5, 5, 3, '#ffffff');
+          r(9, 6, 4, 5, '#00897b'); r(10, 7, 3, 3, '#26a69a');
+          r(6, 10, 10, 5, '#eceff1'); r(7, 10, 8, 3, '#ffffff'); r(6, 14, 10, 1, '#b0bec5');
+          line(5, 11, 3, 15, '#00897b');
+          r(6, 15, 2, 5, '#cfd8dc'); r(9, 15, 2, 5, '#cfd8dc'); r(14, 15, 2, 5, '#cfd8dc');
+          break;
+        case 'SYL_DRAGON': // Side-profile emerald dragon facing right with clear wing/neck/jaw separation
+          // Raised sweeping wing behind back (separated from neck)
+          line(4, 2, 11, 9, '#1b5e20'); line(5, 2, 11, 8, '#66bb6a');
+          r(5, 4, 5, 5, '#2e7d32'); r(4, 5, 3, 3, '#1b5e20'); p(4, 2, '#ffd54f');
+          // Arched neck & horned dragon head facing right
+          r(13, 6, 3, 4, '#2e7d32'); r(14, 7, 2, 3, '#ff7043');
+          line(14, 2, 16, 4, '#ffd54f'); p(15, 3, '#ffd54f'); // swept-back horn
+          r(15, 4, 6, 2, '#2e7d32'); r(16, 4, 4, 1, '#43a047'); p(18, 5, '#ffee58'); // upper snout & eye
+          r(16, 7, 5, 1, '#1b5e20'); p(20, 6, '#ffffff'); // lower jaw with open gap & fang
+          // Muscular torso & fiery belly scales
+          r(8, 9, 8, 6, '#1b5e20'); r(9, 10, 6, 3, '#2e7d32');
+          r(10, 13, 5, 2, '#ff7043'); r(11, 13, 3, 1, '#ffd54f');
+          // Sweeping S-curved tail to the left with barbed tip
+          line(8, 13, 4, 15, '#1b5e20'); line(4, 15, 2, 12, '#43a047'); p(2, 11, '#ffd54f');
+          // Clawed legs
+          r(9, 15, 2, 3, '#2e7d32'); p(10, 18, '#ffd54f');
+          r(14, 15, 2, 3, '#2e7d32'); p(15, 18, '#ffd54f');
+          break;
+        case 'UND_BAT': // Dread bat facing the viewer: compact body, pointed ears, red eyes & wide scalloped wings
+          // Wide V-shaped scalloped purple wings angled outward and up
+          line(2, 3, 9, 8, '#4a148c'); line(3, 3, 9, 7, '#8e24aa');
+          r(3, 5, 6, 4, '#6a1b9a'); p(2, 8, '#311b92'); p(5, 9, '#311b92'); p(8, 10, '#311b92');
+          line(21, 3, 14, 8, '#4a148c'); line(20, 3, 14, 7, '#8e24aa');
+          r(15, 5, 6, 4, '#6a1b9a'); p(21, 8, '#311b92'); p(18, 9, '#311b92'); p(15, 10, '#311b92');
+          // Central body & head facing viewer
+          r(9, 6, 6, 7, '#311b92'); r(10, 7, 4, 5, '#4a148c');
+          p(9, 4, '#6a1b9a'); p(10, 5, '#6a1b9a'); p(14, 4, '#6a1b9a'); p(13, 5, '#6a1b9a'); // pointed ears
+          p(10, 8, '#ff1744'); p(13, 8, '#ff1744'); // glowing red eyes
+          p(11, 10, '#eceff1'); p(12, 10, '#eceff1'); // tiny fangs
+          break;
+        case 'UND_SKEL': // Scary reaper-skeleton: hollow skull, high-contrast ribs & bold crescent-blade scythe
+          line(15, 4, 14, 20, '#5d4037'); // sturdy scythe shaft held near torso
+          // Bold sweeping crescent scythe blade with metallic cutting edge
+          r(15, 3, 5, 2, '#90a4ae'); r(18, 5, 3, 2, '#90a4ae'); p(20, 7, '#90a4ae');
+          r(16, 4, 4, 1, '#eceff1'); r(19, 5, 2, 2, '#ffffff'); p(20, 8, '#eceff1');
+          r(8, 4, 6, 5, '#eceff1'); r(9, 4, 4, 2, '#ffffff');
+          r(10, 6, 1, 2, '#080a0f'); r(13, 6, 1, 2, '#080a0f'); p(10, 6, '#ff1744'); p(13, 6, '#ff1744'); // hollow eyes
+          r(10, 8, 4, 1, '#080a0f'); p(11, 8, '#eceff1'); p(13, 8, '#eceff1'); // grinning skull teeth
+          r(6, 9, 9, 8, '#311b92'); r(6, 15, 2, 3, '#311b92'); r(12, 15, 2, 3, '#311b92'); // ragged reaper shroud
+          // High-contrast ribcage & pelvis with dark 1px gaps so it pops on snow
+          r(9, 9, 4, 1, '#eceff1'); r(9, 10, 4, 1, '#080a0f');
+          r(9, 11, 4, 1, '#eceff1'); r(9, 12, 4, 1, '#080a0f');
+          r(9, 13, 4, 1, '#cfd8dc'); r(9, 14, 4, 1, '#080a0f');
+          r(9, 16, 1, 4, '#eceff1'); r(12, 16, 1, 4, '#eceff1'); // bony legs
+          break;
+        case 'UND_GHOUL': // Creepy hunched ghoul: sunken dark sockets, grimacing jaw & asymmetrical downward-clawed arms
+          r(11, 5, 5, 4, '#9ea793'); r(11, 5, 5, 1, '#7d8a74'); // gaunt skull-like head
+          r(12, 6, 1, 2, '#1b1e23'); r(14, 6, 1, 2, '#1b1e23'); // hollow sunken sockets
+          r(12, 8, 3, 1, '#1b1e23'); p(13, 8, '#d7ccc8'); // jagged grimacing mouth
+          r(7, 8, 6, 3, '#4a148c'); r(8, 10, 6, 5, '#6a1b9a'); // hunched ragged torso
+          line(13, 10, 17, 13, '#9ea793'); line(17, 13, 18, 15, '#7d8a74'); p(18, 16, '#ef5350'); p(19, 15, '#ef5350'); // front clawed arm angled down
+          line(10, 11, 13, 15, '#7d8a74'); p(14, 16, '#ef5350'); // rear dangling claw
+          r(8, 15, 2, 5, '#546e7a'); r(12, 15, 2, 5, '#546e7a'); // creeping legs
+          break;
+        case 'UND_WOLF': // Dire wolf in predator stride: separated front/back legs, haunches, tail & sharp snout
+          p(15, 4, '#cfd8dc'); p(17, 4, '#cfd8dc'); // pointed ears
+          r(15, 5, 5, 4, '#90a4ae'); r(19, 7, 3, 2, '#cfd8dc'); p(18, 6, '#ff1744'); p(21, 9, '#ffffff'); // sharp snout & fang
+          r(12, 8, 5, 6, '#455a64'); r(6, 9, 7, 4, '#455a64'); r(8, 8, 8, 2, '#8e24aa'); // deep chest & lean waist
+          line(6, 9, 2, 12, '#78909c'); line(5, 10, 2, 13, '#546e7a'); // bushy tail
+          r(6, 13, 3, 2, '#37474f'); line(7, 15, 5, 19, '#37474f'); p(6, 19, '#cfd8dc'); // back haunched leg
+          line(8, 14, 8, 19, '#263238'); // back far leg
+          line(15, 14, 17, 19, '#37474f'); p(18, 19, '#cfd8dc'); // front striding leg
+          line(14, 14, 14, 19, '#263238'); // front planted leg
+          break;
+        case 'UND_DEMON': // Abyssal Oni gripping a heavy iron-studded kanabo war-club
+          // Heavy spiked kanabo war-club
+          line(18, 11, 18, 17, '#4e342e'); // wooden grip shaft
+          r(17, 3, 4, 8, '#37474f'); r(18, 4, 2, 6, '#546e7a'); // thick iron club head
+          p(16, 4, '#ffd54f'); p(21, 5, '#ffd54f'); p(16, 7, '#ffd54f'); p(21, 8, '#ffd54f'); p(18, 2, '#eceff1'); // spikes
+          // Horned crimson Oni body
+          line(8, 2, 9, 4, '#ffd54f'); line(15, 2, 14, 4, '#ffd54f');
+          r(9, 4, 6, 4, '#d32f2f'); p(11, 5, '#ffee58'); p(14, 5, '#ffee58');
+          r(7, 8, 9, 7, '#b71c1c'); r(9, 9, 5, 5, '#6a1b9a');
+          r(15, 11, 3, 2, '#d32f2f'); r(17, 11, 2, 2, '#ef5350'); // visible arm & clenched hand gripping club
+          r(8, 15, 3, 5, '#8e0000'); r(13, 15, 3, 5, '#8e0000');
+          break;
+        default:
+          r(7, 5, 10, 9, '#78909c'); r(8, 6, 8, 7, '#cfd8dc');
+          r(8, 14, 8, 3, '#78909c'); r(10, 17, 4, 2, '#546e7a');
+          r(11, 6, 2, 10, '#ffd54f'); r(8, 9, 8, 2, '#ffd54f');
+          break;
+      }
+
+      const outlined = addOutline(c, '#080a0f');
+      const finalC = mkCanvas(24, 24), fg = finalC.getContext('2d');
+      if (FLYERS.has(type)) {
+        fg.fillStyle = 'rgba(0,0,0,0.45)';
+        fg.fillRect(7, 21, 10, 2);
+      } else {
+        fg.fillStyle = 'rgba(0,0,0,0.42)';
+        fg.fillRect(6, 20, 12, 2);
+      }
+      fg.drawImage(outlined, 0, 0);
+      return finalC;
+    };
+
+    const getUnitSprite = (type) => {
+      const key = `u24_${type}`;
+      if (cache.has(key)) return cache.get(key);
+      const c = drawUnit24(type);
+      cache.set(key, c);
+      return c;
+    };
+
+    return { getTerrainTile, getTownSprite, getUnitSprite };
+  })();
+
   function render() {
     const rect = mapWrap.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
@@ -1390,21 +1699,36 @@
       canvas.height = targetH;
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = !pixelArtMode;
     ctx.clearRect(0, 0, rect.width, rect.height);
     if (!gameState) return;
-    const ts = CONFIG.TILE_SIZE * camera.zoom;
+    const ts = pixelArtMode ? Math.max(12, Math.round(CONFIG.TILE_SIZE * camera.zoom)) : (CONFIG.TILE_SIZE * camera.zoom);
+    const camX = pixelArtMode ? Math.round(camera.x) : camera.x;
+    const camY = pixelArtMode ? Math.round(camera.y) : camera.y;
+    const mapW = gameState.map.width * ts;
+    const mapH = gameState.map.height * ts;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(camX, camY, mapW, mapH);
+    ctx.clip();
 
     for (let y = 0; y < gameState.map.height; y++) {
       for (let x = 0; x < gameState.map.width; x++) {
         const tile = getTile(gameState, x, y);
-        const px = camera.x + x * ts, py = camera.y + y * ts;
+        const px = camX + x * ts, py = camY + y * ts;
         if (px + ts < 0 || py + ts < 0 || px > rect.width || py > rect.height) continue;
 
-        ctx.fillStyle = CONFIG.TERRAIN[tile.terrain].color;
-        ctx.fillRect(px, py, ts, ts);
-        ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+        if (pixelArtMode) {
+          const variant = (x * 7 + y * 13) % 4;
+          ctx.drawImage(PixelArt.getTerrainTile(tile.terrain, variant), px, py, ts, ts);
+        } else {
+          ctx.fillStyle = CONFIG.TERRAIN[tile.terrain].color;
+          ctx.fillRect(px, py, ts, ts);
+        }
+        ctx.strokeStyle = pixelArtMode ? 'rgba(0,0,0,0.12)' : 'rgba(0,0,0,0.18)';
         ctx.lineWidth = 1;
-        ctx.strokeRect(px, py, ts, ts);
+        ctx.strokeRect(px + 0.5, py + 0.5, ts - 1, ts - 1);
 
         if (reachableCache) {
           if (reachableCache.has(`${x},${y}`)) {
@@ -1425,13 +1749,18 @@
 
         const town = getTownAt(gameState, x, y);
         if (town) {
-          ctx.fillStyle = town.owner ? CONFIG.FACTIONS[town.owner].color : '#757575';
-          ctx.beginPath();
-          ctx.arc(px + ts * 0.5, py + ts * 0.5, ts * 0.36, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.font = `${Math.floor(ts * 0.52)}px sans-serif`;
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText('🏰', px + ts * 0.5, py + ts * 0.52);
+          if (pixelArtMode) {
+            const pad = Math.round(ts * 0.06);
+            ctx.drawImage(PixelArt.getTownSprite(town.owner), px + pad, py + pad, ts - pad * 2, ts - pad * 2);
+          } else {
+            ctx.fillStyle = town.owner ? CONFIG.FACTIONS[town.owner].color : '#757575';
+            ctx.beginPath();
+            ctx.arc(px + ts * 0.5, py + ts * 0.5, ts * 0.36, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.font = `${Math.floor(ts * 0.52)}px sans-serif`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText('🏰', px + ts * 0.5, py + ts * 0.52);
+          }
         }
 
         const units = getUnitsAt(gameState, x, y).filter(u => u.type !== 'NEU_MILITIA' || u.revealed);
@@ -1442,35 +1771,66 @@
           if (anim) {
             const t = Math.min(1, (performance.now() - anim.start) / anim.duration);
             const ease = t * (2 - t);
-            drawX = camera.x + (anim.fromX + (anim.toX - anim.fromX) * ease) * ts;
-            drawY = camera.y + (anim.fromY + (anim.toY - anim.fromY) * ease) * ts;
+            drawX = camX + (anim.fromX + (anim.toX - anim.fromX) * ease) * ts;
+            drawY = camY + (anim.fromY + (anim.toY - anim.fromY) * ease) * ts;
+            if (pixelArtMode) { drawX = Math.round(drawX); drawY = Math.round(drawY); }
             if (t >= 1) animatingUnits.delete(top.id);
           }
-          ctx.font = `${Math.floor(ts * 0.55)}px sans-serif`;
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText(def.emoji, drawX + ts * 0.5, drawY + ts * 0.5);
+          if (pixelArtMode) {
+            // Subtle dark backing so unit silhouettes pop over castles, snow, mountains, or trees
+            ctx.fillStyle = 'rgba(12, 16, 24, 0.38)';
+            ctx.beginPath();
+            ctx.arc(drawX + ts * 0.5, drawY + ts * 0.52, ts * 0.34, 0, Math.PI * 2);
+            ctx.fill();
+            const uSize = Math.round(ts * 0.84);
+            const uOffX = Math.round((ts - uSize) / 2);
+            const uOffY = Math.round(ts * 0.06);
+            ctx.drawImage(PixelArt.getUnitSprite(top.type), drawX + uOffX, drawY + uOffY, uSize, uSize);
+          } else {
+            ctx.font = `${Math.floor(ts * 0.55)}px sans-serif`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(def.emoji, drawX + ts * 0.5, drawY + ts * 0.5);
+          }
 
+          // Faction indicator dot tucked into top-left corner so it doesn't clip unit heads/crests/horns
+          const dotX = pixelArtMode ? (drawX + ts * 0.13) : (drawX + ts * 0.2);
+          const dotY = pixelArtMode ? (drawY + ts * 0.14) : (drawY + ts * 0.2);
+          const dotR = Math.max(3, ts * (pixelArtMode ? 0.105 : 0.12));
           ctx.fillStyle = top.owner === 'NEUTRAL' ? '#9e9e9e' : CONFIG.FACTIONS[top.owner].color;
           ctx.beginPath();
-          ctx.arc(drawX + ts * 0.2, drawY + ts * 0.2, ts * 0.12, 0, Math.PI * 2);
+          ctx.arc(dotX, dotY, dotR, 0, Math.PI * 2);
           ctx.fill();
+          ctx.strokeStyle = '#12161f';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
 
           if (units.length > 1) {
-            ctx.fillStyle = 'rgba(0,0,0,0.75)';
-            ctx.fillRect(drawX + ts * 0.58, drawY + ts * 0.62, ts * 0.38, ts * 0.32);
+            const bw = Math.round(ts * 0.36), bh = Math.round(ts * 0.27);
+            const bx = Math.round(drawX + ts - bw - 2), by = Math.round(drawY + ts - bh - 7);
+            ctx.fillStyle = 'rgba(12, 16, 24, 0.88)';
+            ctx.fillRect(bx, by, bw, bh);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(bx + 0.5, by + 0.5, bw - 1, bh - 1);
             ctx.fillStyle = '#fff';
-            ctx.font = `bold ${Math.floor(ts * 0.24)}px sans-serif`;
-            ctx.fillText(`×${units.length}`, drawX + ts * 0.77, drawY + ts * 0.78);
+            ctx.font = `bold ${Math.max(8, Math.floor(ts * 0.22))}px sans-serif`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(`×${units.length}`, bx + bw / 2, by + bh / 2 + 0.5);
           }
 
           const hpPct = Math.max(0, top.hp / getUnitMaxHp(top));
+          const hpX = Math.round(drawX + 4), hpY = Math.round(drawY + ts - 6), hpW = Math.round(ts - 8);
           ctx.fillStyle = '#111';
-          ctx.fillRect(drawX + 4, drawY + ts - 6, ts - 8, 4);
+          ctx.fillRect(hpX, hpY, hpW, 4);
           ctx.fillStyle = hpPct > 0.5 ? '#4caf50' : hpPct > 0.25 ? '#ff9800' : '#f44336';
-          ctx.fillRect(drawX + 4, drawY + ts - 6, (ts - 8) * hpPct, 4);
+          ctx.fillRect(hpX, hpY, Math.round(hpW * hpPct), 4);
         }
       }
     }
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(camX + 0.5, camY + 0.5, mapW - 1, mapH - 1);
   }
 
   const infoDropdown = document.getElementById('game-info-dropdown');
@@ -2071,6 +2431,8 @@
         if (tBtn) tBtn.style.display = '';
         const sBtn = document.getElementById('m-sim');
         if (sBtn) sBtn.style.display = '';
+        const scBtn = document.getElementById('m-showcase');
+        if (scBtn) scBtn.style.display = '';
         showToast('Developer tools unlocked');
       }
     } else {
@@ -2160,6 +2522,54 @@
     }
   }
 
+  function buildSpriteShowcase() {
+    const unitIds = Object.keys(CONFIG.UNITS);
+    const terrains = ['PLAINS', 'WOODS', 'MOUNTAINS', 'SNOW'];
+    const w = unitIds.length, h = 8;
+    const tiles = [];
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const terrain = y < 4 ? terrains[y] : terrains[x % 4];
+        tiles.push({ x, y, terrain, hasTown: false });
+      }
+    }
+    const units = [];
+    for (let y = 0; y < 4; y++) {
+      unitIds.forEach((uId, x) => {
+        const u = createUnit(uId, CONFIG.UNITS[uId].faction, x, y);
+        if (u.type === 'NEU_MILITIA') u.revealed = true;
+        units.push(u);
+      });
+    }
+    const towns = [];
+    const owners = [null, 'EMPIRE', 'SYLVAN', 'UNDEAD'];
+    owners.forEach((own, idx) => {
+      const tx = 1 + idx * 3, ty = 5;
+      tiles[ty * w + tx].hasTown = true;
+      towns.push({
+        id: genId('t'), name: TOWN_NAMES[idx], x: tx, y: ty,
+        owner: own, income: CONFIG.TOWN_INCOME, prodUnit: null, nextProdUnit: null, turnsLeft: 0, unlockedUnits: []
+      });
+      if (own) {
+        const sample = own === 'EMPIRE' ? 'EMP_PALADIN' : own === 'SYLVAN' ? 'SYL_DRAGON' : 'UND_DEMON';
+        // Put a ×3 stack on the town next door to inspect unit-on-town & stack badge contrast
+        const tx2 = tx + 1;
+        tiles[ty * w + tx2].hasTown = true;
+        towns.push({
+          id: genId('t'), name: TOWN_NAMES[idx + 4], x: tx2, y: ty,
+          owner: own, income: CONFIG.TOWN_INCOME, prodUnit: null, nextProdUnit: null, turnsLeft: 0, unlockedUnits: []
+        });
+        for (let k = 0; k < 3; k++) units.push(createUnit(sample, own, tx2, ty));
+      }
+    });
+    return {
+      version: 1, turn: 1, activeFaction: 'EMPIRE', humanFaction: 'EMPIRE', difficulty: 'normal', mapSize: 'S', winner: null,
+      factions: { EMPIRE: { gold: 500, alive: true }, SYLVAN: { gold: 500, alive: true }, UNDEAD: { gold: 500, alive: true } },
+      map: { width: w, height: h, tiles },
+      towns, units
+    };
+  }
+
   function showMenuModal() {
     const hasAutosave = !gameState && !!StorageSystem.load('autosave');
     const continueBtn = gameState
@@ -2173,13 +2583,22 @@
       </div>
       <button class="act-btn primary" id="m-new-game">New Game</button>
       ${continueBtn}
+      <button class="act-btn" id="m-visual">Visual Mode: ${pixelArtMode ? 'Pixel Art' : 'Emoji'}</button>
       <button class="act-btn" id="m-save" ${!gameState ? 'disabled' : ''}>Save Slot 1</button>
       <button class="act-btn" id="m-load">Load Slot 1</button>
       <button class="act-btn" id="m-tests" style="${devTestsUnlocked ? '' : 'display:none'}">Run Unit Tests</button>
       <button class="act-btn" id="m-sim" style="${devTestsUnlocked ? '' : 'display:none'}">Run Balance Simulation</button>
+      <button class="act-btn" id="m-showcase" style="${devTestsUnlocked ? '' : 'display:none'}">Load Sprite Showcase</button>
     `, '', true);
 
     document.getElementById('m-new-game').onclick = showNewGameModal;
+    document.getElementById('m-visual').onclick = () => {
+      pixelArtMode = !pixelArtMode;
+      try { localStorage.setItem('emoji_warlords_pixel_mode', pixelArtMode ? '1' : '0'); } catch (e) {}
+      document.getElementById('m-visual').textContent = `Visual Mode: ${pixelArtMode ? 'Pixel Art' : 'Emoji'}`;
+      render();
+      showToast(pixelArtMode ? 'Pixel Art mode enabled' : 'Emoji mode enabled');
+    };
     const contEl = document.getElementById('m-continue');
     if (contEl) {
       contEl.onclick = () => {
@@ -2217,6 +2636,14 @@
       document.getElementById('t-back').onclick = showMenuModal;
     };
     document.getElementById('m-sim').onclick = () => showSimModal((gameState && gameState.mapSize) || 'S');
+    document.getElementById('m-showcase').onclick = () => {
+      gameState = buildSpriteShowcase();
+      StorageSystem.save(gameState, 'autosave');
+      selectedUnitId = null; selectedTile = null; reachableCache = null;
+      centerCameraOn(7, 3);
+      closeModal(); updateHUD(); render();
+      showToast('Sprite Showcase loaded');
+    };
   }
 
   document.getElementById('menu-btn').onclick = showMenuModal;
