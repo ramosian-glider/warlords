@@ -1528,17 +1528,17 @@
           break;
         case 'EMP_PALADIN': // Winged-helm armored Paladin (narrower helm): steel plate, gold trim, belt, royal cape & greatsword
           r(5, 9, 11, 9, '#1565c0'); r(4, 13, 3, 6, '#0d47a1');
-          line(15, 9, 20, 2, '#ffd54f'); line(16, 9, 20, 3, '#fff9c4'); r(14, 9, 4, 1, '#ff8f00');
+          line(15, 9, 19, 4, '#ffd54f'); line(16, 9, 19, 5, '#fff9c4'); r(14, 9, 4, 1, '#ff8f00');
           p(8, 3, '#ffffff'); p(9, 4, '#ffffff'); p(14, 4, '#ffffff'); p(15, 3, '#ffffff');
           r(10, 3, 4, 3, '#ffd54f'); r(10, 6, 4, 2, '#263238'); // narrower closed visor helm
           r(8, 8, 8, 2, '#ffd54f'); // golden pauldrons
           r(9, 9, 6, 5, '#eceff1'); r(11, 10, 2, 3, '#1976d2'); r(9, 14, 6, 1, '#ff8f00'); // breastplate & gold belt
           r(9, 15, 2, 5, '#b0bec5'); r(13, 15, 2, 5, '#b0bec5'); r(9, 18, 2, 2, '#ffd54f'); r(13, 18, 2, 2, '#ffd54f');
           break;
-        case 'EMP_KNIGHT': // Heavy cavalry facing right: armored charger, rider & couched lance with pennon
-          line(15, 2, 15, 12, '#eceff1'); r(16, 2, 5, 3, '#1e88e5'); r(16, 3, 4, 1, '#ffd54f');
-          r(9, 3, 4, 3, '#cfd8dc'); r(10, 2, 2, 1, '#1e88e5');
-          r(8, 6, 6, 5, '#1e88e5'); r(10, 7, 2, 3, '#ffd54f');
+        case 'EMP_KNIGHT': // Heavy cavalry facing right with lance & banner streaming behind
+          line(8, 2, 8, 12, '#eceff1'); r(3, 2, 5, 3, '#1e88e5'); r(3, 3, 4, 1, '#ffd54f'); // rear banner
+          r(10, 3, 4, 3, '#cfd8dc'); r(11, 2, 2, 1, '#1e88e5');
+          r(9, 6, 6, 5, '#1e88e5'); r(11, 7, 2, 3, '#ffd54f');
           line(5, 12, 2, 15, '#4e342e'); // horse tail on left
           r(5, 11, 12, 5, '#6d4c41'); r(6, 11, 10, 3, '#1976d2'); r(6, 14, 10, 1, '#ffd54f'); // barded horse body
           r(16, 8, 4, 4, '#8d6e63'); r(18, 9, 3, 2, '#a1887f'); // horse head facing right
@@ -1582,15 +1582,15 @@
           line(5, 11, 3, 15, '#00897b');
           r(6, 15, 2, 5, '#cfd8dc'); r(9, 15, 2, 5, '#cfd8dc'); r(14, 15, 2, 5, '#cfd8dc');
           break;
-        case 'SYL_DRAGON': // Side-profile emerald dragon facing right: raised wing, horned snout, fiery belly & barbed tail
-          // Raised sweeping wing behind back
-          line(5, 2, 12, 9, '#1b5e20'); line(6, 2, 12, 8, '#66bb6a');
-          r(6, 4, 6, 5, '#2e7d32'); r(5, 5, 3, 3, '#1b5e20'); p(5, 2, '#ffd54f');
+        case 'SYL_DRAGON': // Side-profile emerald dragon facing right with clear wing/neck/jaw separation
+          // Raised sweeping wing behind back (separated from neck)
+          line(4, 2, 11, 9, '#1b5e20'); line(5, 2, 11, 8, '#66bb6a');
+          r(5, 4, 5, 5, '#2e7d32'); r(4, 5, 3, 3, '#1b5e20'); p(4, 2, '#ffd54f');
           // Arched neck & horned dragon head facing right
-          r(14, 6, 3, 4, '#2e7d32'); r(15, 7, 2, 3, '#ff7043');
+          r(13, 6, 3, 4, '#2e7d32'); r(14, 7, 2, 3, '#ff7043');
           line(14, 2, 16, 4, '#ffd54f'); p(15, 3, '#ffd54f'); // swept-back horn
-          r(15, 4, 6, 3, '#2e7d32'); r(16, 4, 4, 2, '#43a047'); p(18, 5, '#ffee58'); // snout & glowing eye
-          r(17, 7, 4, 1, '#1b5e20'); p(20, 6, '#ffffff'); // lower jaw & fang
+          r(15, 4, 6, 2, '#2e7d32'); r(16, 4, 4, 1, '#43a047'); p(18, 5, '#ffee58'); // upper snout & eye
+          r(16, 7, 5, 1, '#1b5e20'); p(20, 6, '#ffffff'); // lower jaw with open gap & fang
           // Muscular torso & fiery belly scales
           r(8, 9, 8, 6, '#1b5e20'); r(9, 10, 6, 3, '#2e7d32');
           r(10, 13, 5, 2, '#ff7043'); r(11, 13, 3, 1, '#ffd54f');
@@ -1607,7 +1607,7 @@
           p(12, 7, '#ff1744'); p(14, 7, '#ff1744');
           break;
         case 'UND_SKEL': // Scary reaper-skeleton facing right: hollow skull with red pinpricks, high-contrast ribs & forward scythe
-          line(16, 3, 16, 20, '#5d4037'); line(16, 3, 21, 2, '#cfd8dc'); line(21, 2, 22, 5, '#eceff1'); // forward-curved scythe
+          line(16, 4, 16, 20, '#5d4037'); line(16, 4, 20, 3, '#cfd8dc'); line(20, 3, 21, 6, '#eceff1'); // forward-curved scythe (nudged in/down)
           r(8, 4, 6, 5, '#eceff1'); r(9, 4, 4, 2, '#ffffff');
           r(10, 6, 1, 2, '#080a0f'); r(13, 6, 1, 2, '#080a0f'); p(10, 6, '#ff1744'); p(13, 6, '#ff1744'); // hollow eyes looking right
           r(10, 8, 4, 1, '#080a0f'); p(11, 8, '#eceff1'); p(13, 8, '#eceff1'); // grinning skull teeth
@@ -1618,11 +1618,11 @@
           r(9, 13, 4, 1, '#cfd8dc'); r(9, 14, 4, 1, '#080a0f');
           r(9, 16, 1, 4, '#eceff1'); r(12, 16, 1, 4, '#eceff1'); // bony legs
           break;
-        case 'UND_GHOUL': // Hunched ghoul lunging right: pale ashy corpse skin, purple rags & forward bloodied claws
+        case 'UND_GHOUL': // Hunched ghoul lunging right: compact reach, pale ashy corpse skin, purple rags & bloodied claws
           r(10, 5, 5, 4, '#9ea793'); r(10, 5, 5, 1, '#7d8a74'); p(12, 7, '#ff1744'); p(14, 7, '#ff1744');
           r(7, 9, 7, 6, '#4a148c'); r(8, 10, 5, 4, '#7b1fa2');
-          line(14, 10, 19, 9, '#9ea793'); p(20, 9, '#ef5350'); // upper claw reaching right
-          line(14, 12, 19, 13, '#9ea793'); p(20, 13, '#ef5350'); // lower claw reaching right
+          line(14, 10, 18, 9, '#9ea793'); p(19, 9, '#ef5350'); // upper claw reaching right
+          line(14, 12, 18, 13, '#9ea793'); p(19, 13, '#ef5350'); // lower claw reaching right
           r(8, 15, 2, 5, '#78909c'); r(12, 15, 2, 5, '#78909c');
           break;
         case 'UND_WOLF':
