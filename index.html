@@ -1391,7 +1391,7 @@
       c.width = w; c.height = h;
       return c;
     };
-    const addOutline = (c, color = '#12161f') => {
+    const addOutline = (c, color = '#080a0f') => {
       const w = c.width, h = c.height, g = c.getContext('2d');
       const src = g.getImageData(0, 0, w, h).data;
       const out = mkCanvas(w, h), og = out.getContext('2d');
@@ -1400,10 +1400,13 @@
         for (let x = 0; x < w; x++) {
           if (src[(y * w + x) * 4 + 3] > 0) continue;
           let adj = false;
-          if (x > 0 && src[(y * w + x - 1) * 4 + 3] > 0) adj = true;
-          else if (x < w - 1 && src[(y * w + x + 1) * 4 + 3] > 0) adj = true;
-          else if (y > 0 && src[((y - 1) * w + x) * 4 + 3] > 0) adj = true;
-          else if (y < h - 1 && src[((y + 1) * w + x) * 4 + 3] > 0) adj = true;
+          for (let dy = -1; dy <= 1 && !adj; dy++) {
+            for (let dx = -1; dx <= 1 && !adj; dx++) {
+              if (dx === 0 && dy === 0) continue;
+              const nx = x + dx, ny = y + dy;
+              if (nx >= 0 && nx < w && ny >= 0 && ny < h && src[(ny * w + nx) * 4 + 3] > 0) adj = true;
+            }
+          }
           if (adj) og.fillRect(x, y, 1, 1);
         }
       }
@@ -1525,123 +1528,129 @@
     const drawUnit24 = (type) => {
       const c = mkCanvas(24, 24), g = c.getContext('2d');
       const r = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
+      const p = (x, y, col) => { g.fillStyle = col; g.fillRect(x, y, 1, 1); };
+      const line = (x0, y0, x1, y1, col) => {
+        g.fillStyle = col;
+        const steps = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+        for (let i = 0; i <= steps; i++) {
+          const t = steps ? i / steps : 0;
+          g.fillRect(Math.round(x0 + (x1 - x0) * t), Math.round(y0 + (y1 - y0) * t), 1, 1);
+        }
+      };
 
       switch (type) {
-        case 'EMP_SCOUT': // Bold dark-blue hooded cloak + bright silver dagger
-          r(8, 3, 8, 5, '#1565c0'); r(9, 4, 6, 3, '#42a5f5'); // pointed hood
-          r(9, 7, 6, 3, '#101820'); r(10, 8, 4, 1, '#80d8ff'); // shadow visor
-          r(6, 10, 12, 8, '#1e3a5f'); r(8, 10, 8, 7, '#1976d2'); // wide cloak
-          r(16, 9, 5, 3, '#eceff1'); r(18, 8, 3, 2, '#ffffff'); // chunky dagger
-          r(7, 18, 4, 3, '#263238'); r(13, 18, 4, 3, '#263238');
+        case 'EMP_SCOUT': // Slim hooded rogue with flowing cloak & angled dagger
+          r(10, 3, 4, 1, '#1e88e5'); r(9, 4, 6, 3, '#1565c0'); r(10, 5, 4, 2, '#101820'); p(11, 6, '#80d8ff'); p(13, 6, '#80d8ff');
+          r(9, 7, 6, 2, '#1e3a5f'); r(8, 9, 7, 5, '#1976d2'); r(7, 11, 2, 5, '#1565c0'); // slim flowing cloak
+          r(10, 14, 2, 4, '#263238'); r(13, 14, 2, 4, '#263238'); r(9, 18, 3, 2, '#1a202c'); r(13, 18, 3, 2, '#1a202c');
+          line(15, 11, 19, 7, '#eceff1'); p(19, 7, '#ffffff'); // angled dagger
           break;
-        case 'EMP_GUARD': // Wide tower shield + crested steel helm + royal blue surcoat
-          r(17, 2, 2, 19, '#8d6e63'); r(16, 2, 5, 5, '#eceff1'); // bold halberd
-          r(8, 3, 8, 5, '#cfd8dc'); r(10, 2, 4, 2, '#1e88e5'); // crested helm
-          r(7, 8, 10, 10, '#1976d2'); r(9, 9, 6, 6, '#42a5f5'); r(10, 10, 4, 3, '#ffd54f'); // surcoat
-          r(2, 8, 7, 11, '#1565c0'); r(3, 9, 5, 9, '#eceff1'); r(4, 10, 3, 7, '#1e88e5'); // big tower shield
-          r(8, 18, 3, 3, '#455a64'); r(13, 18, 3, 3, '#455a64');
+        case 'EMP_GUARD': // Slim royal halberdier with heater shield & tall polearm
+          line(17, 3, 17, 20, '#8d6e63'); r(16, 3, 3, 4, '#eceff1'); p(19, 4, '#ffffff'); // halberd
+          r(10, 3, 4, 2, '#1e88e5'); r(9, 5, 6, 3, '#cfd8dc'); r(10, 7, 4, 2, '#ffcc80'); // helm & face
+          r(9, 9, 6, 6, '#1976d2'); r(11, 10, 2, 4, '#ffd54f'); // slim surcoat
+          r(5, 9, 4, 6, '#1565c0'); r(6, 10, 2, 4, '#eceff1'); r(6, 15, 2, 1, '#1565c0'); // tapered shield
+          r(9, 15, 2, 5, '#546e7a'); r(13, 15, 2, 5, '#546e7a');
           break;
-        case 'EMP_PALADIN': // Golden-winged champion + royal blue cape + glowing greatsword
-          r(4, 8, 16, 11, '#1565c0'); // wide royal cape
-          r(17, 2, 3, 12, '#fff59d'); r(18, 2, 1, 11, '#ffffff'); r(15, 13, 7, 2, '#ffb300'); // glowing greatsword
-          r(7, 3, 10, 5, '#ffd54f'); r(4, 4, 3, 3, '#ffffff'); r(17, 4, 3, 3, '#ffffff'); // winged gold helm
-          r(7, 8, 10, 10, '#ffd54f'); r(9, 9, 6, 7, '#eceff1'); r(10, 10, 4, 4, '#1976d2'); // gold & steel plate
-          r(2, 10, 6, 9, '#ffd54f'); r(3, 11, 4, 7, '#1976d2'); // kite shield
-          r(8, 18, 3, 3, '#cfd8dc'); r(13, 18, 3, 3, '#cfd8dc');
+        case 'EMP_PALADIN': // Tall slim golden-armored paladin with flowing cape & raised sword
+          r(7, 9, 9, 9, '#1565c0'); r(6, 12, 2, 6, '#0d47a1'); // flowing cape
+          line(17, 3, 17, 13, '#fff59d'); p(17, 3, '#ffffff'); r(15, 12, 5, 1, '#ffb300'); r(17, 13, 1, 2, '#5d4037'); // sword
+          r(10, 3, 4, 2, '#ffd54f'); r(9, 5, 6, 3, '#eceff1'); p(8, 4, '#ffffff'); p(15, 4, '#ffffff'); // winged helm
+          r(9, 8, 6, 7, '#eceff1'); r(10, 9, 4, 4, '#ffd54f'); r(11, 10, 2, 2, '#1976d2');
+          r(5, 10, 4, 6, '#ffd54f'); r(6, 11, 2, 4, '#1976d2'); // kite shield
+          r(9, 15, 2, 5, '#cfd8dc'); r(13, 15, 2, 5, '#cfd8dc');
           break;
-        case 'EMP_KNIGHT': // Unmistakable wide mounted warhorse + blue barding + lance
-          r(15, 2, 2, 13, '#eceff1'); r(17, 2, 5, 4, '#1e88e5'); r(17, 3, 4, 2, '#ffd54f'); // lance & flag
-          r(8, 3, 6, 5, '#eceff1'); r(9, 2, 4, 2, '#1e88e5'); // rider helm
-          r(7, 8, 8, 4, '#1976d2'); // rider torso
-          r(2, 10, 5, 5, '#8d6e63'); r(4, 11, 15, 7, '#1976d2'); r(6, 12, 11, 4, '#42a5f5'); r(6, 16, 11, 2, '#ffd54f'); // barded charger
-          r(4, 18, 3, 3, '#5d4037'); r(9, 18, 3, 3, '#5d4037'); r(15, 18, 3, 3, '#5d4037');
+        case 'EMP_KNIGHT': // Sleek mounted warhorse & slim lanced rider
+          line(15, 2, 15, 13, '#eceff1'); r(16, 2, 4, 3, '#1e88e5'); r(16, 3, 3, 1, '#ffd54f'); // lance & pennant
+          r(10, 4, 4, 3, '#eceff1'); r(11, 3, 2, 1, '#1e88e5'); r(9, 7, 5, 4, '#1976d2'); // slim rider
+          r(4, 10, 3, 3, '#8d6e63'); r(3, 11, 2, 2, '#a1887f'); // horse head
+          r(6, 11, 11, 5, '#1976d2'); r(7, 12, 9, 2, '#42a5f5'); r(7, 15, 9, 1, '#ffd54f'); // sleek barding
+          r(6, 16, 2, 4, '#5d4037'); r(9, 16, 2, 4, '#5d4037'); r(14, 16, 2, 4, '#5d4037');
           break;
-        case 'EMP_EAGLE': // Bold soaring V-wings + bright white head
-          r(1, 5, 9, 6, '#6d4c41'); r(2, 6, 7, 4, '#a1887f'); // left wing
-          r(14, 5, 9, 6, '#6d4c41'); r(15, 6, 7, 4, '#a1887f'); // right wing
-          r(8, 9, 8, 8, '#5d4037'); r(9, 10, 6, 5, '#8d6e63'); // body
-          r(8, 3, 8, 6, '#ffffff'); r(10, 7, 4, 3, '#ffb300'); // bold white head & gold beak
-          r(8, 17, 3, 4, '#ffb300'); r(13, 17, 3, 4, '#ffb300');
+        case 'EMP_EAGLE': // Graceful soaring eagle with swept-back wings
+          line(3, 6, 10, 10, '#6d4c41'); line(2, 7, 9, 11, '#8d6e63'); line(4, 9, 9, 12, '#4e342e'); // left swept wing
+          line(20, 6, 13, 10, '#6d4c41'); line(21, 7, 14, 11, '#8d6e63'); line(19, 9, 14, 12, '#4e342e'); // right swept wing
+          r(10, 9, 4, 6, '#5d4037'); r(10, 5, 4, 4, '#ffffff'); r(11, 7, 3, 2, '#ffb300'); // slim body, white head, beak
+          r(9, 15, 2, 3, '#ffb300'); r(13, 15, 2, 3, '#ffb300');
           break;
-        case 'SYL_PIXIE': // Bold glowing cyan butterfly wings + emerald body
-          r(2, 4, 8, 7, '#4dd0e1'); r(3, 5, 6, 5, '#e0f7fa'); r(3, 11, 6, 5, '#26c6da'); // left wing
-          r(14, 4, 8, 7, '#4dd0e1'); r(15, 5, 6, 5, '#e0f7fa'); r(15, 11, 6, 5, '#26c6da'); // right wing
-          r(9, 4, 6, 5, '#f48fb1'); r(10, 5, 4, 3, '#ffe0b2'); // head
-          r(9, 9, 6, 9, '#43a047'); r(10, 10, 4, 7, '#81c784'); // emerald dress
+        case 'SYL_PIXIE': // Delicate winged woodland fae
+          r(5, 6, 5, 4, '#80deea'); r(6, 7, 3, 2, '#e0f7fa'); r(6, 10, 4, 3, '#4dd0e1'); // left wing
+          r(14, 6, 5, 4, '#80deea'); r(15, 7, 3, 2, '#e0f7fa'); r(14, 10, 4, 3, '#4dd0e1'); // right wing
+          r(10, 5, 4, 3, '#ffe0b2'); r(10, 4, 4, 2, '#f06292'); // head & hair
+          r(10, 8, 4, 6, '#43a047'); r(9, 13, 6, 3, '#81c784'); // tapered leaf dress
+          r(10, 16, 1, 3, '#ffe0b2'); r(13, 16, 1, 3, '#ffe0b2');
           break;
-        case 'SYL_ELF': // Tall pointed emerald hood + bold curved wooden bow
-          r(9, 2, 6, 3, '#2e7d32'); r(7, 5, 10, 4, '#43a047'); // tall pointed hood
-          r(9, 7, 6, 3, '#ffe0b2'); // face
-          r(6, 10, 10, 8, '#2e7d32'); r(8, 11, 6, 6, '#66bb6a'); // green tunic
-          r(16, 4, 3, 14, '#8d6e63'); r(18, 6, 2, 10, '#a1887f'); // chunky bow
-          r(14, 10, 8, 2, '#eceff1'); // bold arrow
-          r(7, 18, 4, 3, '#4e342e'); r(12, 18, 4, 3, '#4e342e');
+        case 'SYL_ELF': // Slim hooded forest archer with curved bow
+          p(11, 2, '#2e7d32'); r(10, 3, 4, 2, '#2e7d32'); r(9, 5, 6, 2, '#43a047'); // pointed hood
+          r(10, 7, 4, 2, '#ffe0b2'); // face
+          r(9, 9, 5, 6, '#2e7d32'); r(10, 10, 3, 4, '#66bb6a'); // slim tunic
+          line(16, 5, 18, 10, '#8d6e63'); line(18, 10, 16, 16, '#8d6e63'); // curved bow
+          line(13, 10, 19, 10, '#eceff1'); // arrow
+          r(9, 15, 2, 5, '#4e342e'); r(12, 15, 2, 5, '#4e342e');
           break;
-        case 'SYL_TROLL': // Huge wide mossy-green hulk + massive club
-          r(17, 3, 5, 14, '#5d4037'); r(18, 2, 4, 4, '#66bb6a'); // massive mossy club
-          r(6, 3, 11, 6, '#558b2f'); r(8, 6, 2, 2, '#ffee58'); r(13, 6, 2, 2, '#ffee58'); // head & eyes
-          r(3, 9, 16, 9, '#33691e'); r(5, 10, 12, 6, '#7cb342'); // huge mossy shoulders
-          r(5, 18, 5, 3, '#33691e'); r(12, 18, 5, 3, '#33691e');
+        case 'SYL_TROLL': // Hunched organic moss troll with gnarled club
+          line(17, 5, 19, 16, '#5d4037'); r(16, 4, 4, 4, '#6d4c41'); r(17, 3, 2, 2, '#66bb6a'); // gnarled club
+          r(8, 5, 7, 4, '#558b2f'); p(10, 7, '#ffee58'); p(13, 7, '#ffee58'); // hunched head
+          r(6, 9, 10, 7, '#33691e'); r(8, 10, 6, 4, '#7cb342'); // mossy torso
+          r(7, 16, 3, 4, '#33691e'); r(12, 16, 3, 4, '#33691e');
           break;
-        case 'SYL_UNICORN': // Bright white horse silhouette + bold golden horn
-          r(16, 2, 3, 3, '#ffd54f'); r(15, 4, 2, 2, '#ffb300'); // golden horn
-          r(11, 5, 7, 5, '#ffffff'); // head
-          r(8, 6, 5, 5, '#4db6ac'); // seafoam mane
-          r(4, 10, 14, 7, '#f5f5f5'); r(6, 11, 10, 5, '#ffffff'); // body
-          r(4, 17, 3, 4, '#e0e0e0'); r(9, 17, 3, 4, '#e0e0e0'); r(14, 17, 3, 4, '#e0e0e0');
+        case 'SYL_UNICORN': // Graceful slim white unicorn with golden horn
+          line(16, 2, 14, 5, '#ffd54f'); // slender golden horn
+          r(12, 5, 5, 3, '#ffffff'); r(10, 7, 3, 4, '#4db6ac'); // head & flowing mane
+          r(6, 10, 10, 5, '#f5f5f5'); r(7, 11, 8, 3, '#ffffff'); // sleek body
+          line(5, 11, 3, 14, '#4db6ac'); // tail
+          r(6, 15, 2, 5, '#e0e0e0'); r(9, 15, 2, 5, '#e0e0e0'); r(14, 15, 2, 5, '#e0e0e0');
           break;
-        case 'SYL_DRAGON': // Huge wide emerald wings + golden horns + fiery chest
-          r(1, 4, 8, 9, '#1b5e20'); r(2, 5, 6, 7, '#43a047'); // left wing
-          r(15, 4, 8, 9, '#1b5e20'); r(16, 5, 6, 7, '#43a047'); // right wing
-          r(7, 2, 3, 4, '#ffd54f'); r(14, 2, 3, 4, '#ffd54f'); // bold horns
-          r(7, 5, 10, 6, '#2e7d32'); r(9, 7, 2, 2, '#ffee58'); r(13, 7, 2, 2, '#ffee58'); // head
-          r(6, 11, 12, 8, '#1b5e20'); r(9, 12, 6, 6, '#ff7043'); // fiery chest
-          r(6, 19, 4, 2, '#2e7d32'); r(14, 19, 4, 2, '#2e7d32');
+        case 'SYL_DRAGON': // Sleek winged emerald wyrm
+          line(3, 4, 9, 10, '#1b5e20'); r(4, 6, 5, 5, '#43a047'); // left wing
+          line(20, 4, 14, 10, '#1b5e20'); r(15, 6, 5, 5, '#43a047'); // right wing
+          p(9, 3, '#ffd54f'); p(14, 3, '#ffd54f'); r(9, 4, 6, 5, '#2e7d32'); p(10, 6, '#ffee58'); p(13, 6, '#ffee58'); // horned head
+          r(9, 9, 6, 7, '#1b5e20'); r(10, 10, 4, 5, '#ff7043'); // slender scaled body & fire chest
+          r(8, 16, 2, 4, '#2e7d32'); r(14, 16, 2, 4, '#2e7d32');
           break;
-        case 'UND_BAT': // Wide purple-black batwings + bright red eyes
-          r(1, 5, 9, 7, '#4a148c'); r(2, 6, 7, 5, '#7b1fa2'); r(1, 12, 3, 3, '#311b92');
-          r(14, 5, 9, 7, '#4a148c'); r(15, 6, 7, 5, '#7b1fa2'); r(20, 12, 3, 3, '#311b92');
-          r(8, 6, 8, 9, '#311b92'); r(8, 4, 3, 3, '#6a1b9a'); r(13, 4, 3, 3, '#6a1b9a'); // ears
-          r(9, 8, 2, 2, '#ff1744'); r(13, 8, 2, 2, '#ff1744'); // glowing red eyes
+        case 'UND_BAT': // Swept-wing vampiric bat
+          line(2, 6, 9, 10, '#4a148c'); r(3, 7, 6, 4, '#7b1fa2'); p(3, 11, '#311b92');
+          line(21, 6, 14, 10, '#4a148c'); r(15, 7, 6, 4, '#7b1fa2'); p(20, 11, '#311b92');
+          r(9, 7, 6, 6, '#311b92'); p(9, 5, '#6a1b9a'); p(14, 5, '#6a1b9a'); // ears
+          p(10, 9, '#ff1744'); p(13, 9, '#ff1744'); // red eyes
           break;
-        case 'UND_SKEL': // Bold white skull + purple cloak + chunky bone shield
-          r(17, 3, 3, 12, '#cfd8dc'); r(18, 3, 1, 11, '#ffffff'); // blade
-          r(8, 3, 8, 7, '#ffffff'); r(9, 5, 2, 2, '#141820'); r(13, 5, 2, 2, '#141820'); // bold skull
-          r(6, 10, 12, 8, '#6a1b9a'); r(9, 10, 6, 7, '#eceff1'); // purple cloak & ribs
-          r(2, 10, 6, 8, '#4a148c'); r(3, 11, 4, 6, '#cfd8dc'); // shield
-          r(8, 18, 3, 3, '#eceff1'); r(13, 18, 3, 3, '#eceff1');
+        case 'UND_SKEL': // Slim bony skeleton warrior with notched sword & cloak
+          line(17, 4, 17, 14, '#cfd8dc'); p(17, 4, '#ffffff'); r(16, 13, 3, 1, '#78909c'); // sword
+          r(10, 4, 4, 5, '#ffffff'); p(11, 6, '#141820'); p(13, 6, '#141820'); // slim skull
+          r(8, 9, 8, 6, '#6a1b9a'); r(10, 9, 4, 6, '#eceff1'); p(11, 11, '#6a1b9a'); p(12, 13, '#6a1b9a'); // ribs & cloak
+          r(5, 10, 3, 5, '#4a148c'); r(6, 11, 1, 3, '#cfd8dc'); // small buckler
+          r(10, 15, 1, 5, '#eceff1'); r(13, 15, 1, 5, '#eceff1'); // bony legs
           break;
-        case 'UND_GHOUL': // Hunched lime-green brute + purple rags + crimson claws
-          r(7, 4, 10, 6, '#8bc34a'); r(9, 6, 2, 2, '#ff1744'); r(13, 6, 2, 2, '#ff1744');
-          r(5, 10, 14, 8, '#6a1b9a'); r(7, 11, 10, 6, '#8e24aa'); // purple rags
-          r(2, 10, 4, 5, '#8bc34a'); r(2, 13, 3, 2, '#ef5350'); // left claw
-          r(18, 10, 4, 5, '#8bc34a'); r(19, 13, 3, 2, '#ef5350'); // right claw
-          r(6, 18, 4, 3, '#689f38'); r(14, 18, 4, 3, '#689f38');
+        case 'UND_GHOUL': // Hunched slim feral ghoul with claws
+          r(9, 5, 6, 4, '#8bc34a'); p(10, 7, '#ff1744'); p(13, 7, '#ff1744');
+          r(8, 9, 8, 6, '#6a1b9a'); r(9, 10, 6, 4, '#8e24aa'); // tattered rags
+          line(7, 10, 4, 13, '#8bc34a'); p(4, 13, '#ef5350'); // left claw
+          line(16, 10, 19, 13, '#8bc34a'); p(19, 13, '#ef5350'); // right claw
+          r(9, 15, 2, 5, '#689f38'); r(13, 15, 2, 5, '#689f38');
           break;
-        case 'UND_WOLF': // Low crouching dark wolf + purple mane + glowing red eye
-          r(14, 4, 3, 4, '#37474f'); r(18, 4, 3, 4, '#37474f'); // ears
-          r(13, 7, 9, 6, '#546e7a'); r(17, 8, 2, 2, '#ff1744'); r(19, 11, 3, 2, '#ffffff'); // head, eye, fang
-          r(3, 10, 13, 7, '#37474f'); r(5, 10, 10, 4, '#7b1fa2'); // purple shadow mane
-          r(4, 17, 3, 4, '#263238'); r(9, 17, 3, 4, '#263238'); r(15, 17, 3, 4, '#263238');
+        case 'UND_WOLF': // Sleek crouching shadow wolf
+          p(15, 5, '#37474f'); p(18, 5, '#37474f'); r(14, 6, 6, 4, '#546e7a'); p(17, 7, '#ff1744'); p(19, 9, '#ffffff');
+          r(5, 10, 11, 5, '#37474f'); r(7, 10, 8, 2, '#7b1fa2'); // sleek body & purple mane
+          line(4, 11, 2, 13, '#455a64'); // tail
+          r(6, 15, 2, 5, '#263238'); r(9, 15, 2, 5, '#263238'); r(14, 15, 2, 5, '#263238');
           break;
-        case 'UND_DEMON': // Towering horned crimson-and-violet oni + iron club
-          r(17, 3, 5, 15, '#37474f'); r(18, 4, 3, 6, '#607d8b'); // massive iron club
-          r(5, 2, 3, 4, '#ffd54f'); r(15, 2, 3, 4, '#ffd54f'); // bold horns
-          r(6, 4, 11, 6, '#d32f2f'); r(8, 6, 2, 2, '#ffee58'); r(13, 6, 2, 2, '#ffee58'); // crimson head
-          r(4, 10, 15, 8, '#b71c1c'); r(7, 11, 9, 6, '#6a1b9a'); // crimson & purple armor
-          r(5, 18, 4, 3, '#8e0000'); r(14, 18, 4, 3, '#8e0000');
+        case 'UND_DEMON': // Tall horned crimson oni with club
+          line(18, 4, 18, 17, '#37474f'); r(17, 4, 3, 5, '#607d8b'); // club
+          p(8, 2, '#ffd54f'); p(15, 2, '#ffd54f'); r(9, 3, 6, 5, '#d32f2f'); p(10, 5, '#ffee58'); p(13, 5, '#ffee58'); // horned head
+          r(7, 8, 9, 7, '#b71c1c'); r(9, 9, 5, 5, '#6a1b9a'); // slim armored oni torso
+          r(8, 15, 3, 5, '#8e0000'); r(13, 15, 3, 5, '#8e0000');
           break;
-        default: // NEU_MILITIA: Bold iron-rimmed heater shield with gold cross
-          r(5, 4, 14, 13, '#78909c'); r(6, 5, 12, 11, '#cfd8dc');
-          r(7, 17, 10, 3, '#78909c'); r(9, 20, 6, 1, '#546e7a');
-          r(11, 6, 2, 11, '#ffd54f'); r(7, 10, 10, 2, '#ffd54f'); // gold cross
+        default: // NEU_MILITIA: Tapered heater shield with gold cross
+          r(7, 5, 10, 9, '#78909c'); r(8, 6, 8, 7, '#cfd8dc');
+          r(8, 14, 8, 3, '#78909c'); r(10, 17, 4, 2, '#546e7a');
+          r(11, 6, 2, 10, '#ffd54f'); r(8, 9, 8, 2, '#ffd54f');
           break;
       }
 
-      const outlined = addOutline(c, '#0d1016');
+      const outlined = addOutline(c, '#080a0f');
       const finalC = mkCanvas(24, 24), fg = finalC.getContext('2d');
       fg.fillStyle = 'rgba(0,0,0,0.42)';
-      fg.fillRect(4, 21, 16, 2);
+      fg.fillRect(6, 20, 12, 2);
       fg.drawImage(outlined, 0, 0);
       return finalC;
     };
