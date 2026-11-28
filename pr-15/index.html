@@ -1579,13 +1579,19 @@
           line(5, 11, 3, 15, '#00897b');
           r(6, 15, 2, 5, '#cfd8dc'); r(9, 15, 2, 5, '#cfd8dc'); r(14, 15, 2, 5, '#cfd8dc');
           break;
-        case 'SYL_DRAGON':
-          line(3, 2, 9, 8, '#1b5e20'); r(4, 4, 5, 5, '#43a047'); line(3, 2, 5, 8, '#2e7d32');
-          line(20, 2, 14, 8, '#1b5e20'); r(15, 4, 5, 5, '#43a047'); line(20, 2, 18, 8, '#2e7d32');
-          p(9, 2, '#ffd54f'); p(14, 2, '#ffd54f'); r(9, 3, 6, 5, '#2e7d32'); p(10, 5, '#ffee58'); p(13, 5, '#ffee58');
-          r(9, 8, 6, 6, '#1b5e20'); r(10, 9, 4, 4, '#ff7043');
-          line(9, 13, 5, 16, '#2e7d32'); line(5, 16, 8, 17, '#4caf50');
-          r(12, 14, 2, 3, '#2e7d32');
+        case 'SYL_DRAGON': // Apex emerald dragon with raised wings, fiery chest & separated barbed tail
+          // Raised sweeping wings with bright upper ridge
+          line(2, 2, 8, 8, '#1b5e20'); line(3, 2, 8, 7, '#66bb6a'); r(3, 4, 5, 4, '#2e7d32'); p(3, 8, '#1b5e20');
+          line(21, 2, 15, 8, '#1b5e20'); line(20, 2, 15, 7, '#66bb6a'); r(16, 4, 5, 4, '#2e7d32'); p(20, 8, '#1b5e20');
+          // Horned head & neck
+          p(9, 1, '#ffd54f'); p(14, 1, '#ffd54f'); r(9, 2, 6, 4, '#2e7d32'); r(10, 3, 4, 2, '#43a047');
+          p(10, 4, '#ffee58'); p(13, 4, '#ffee58');
+          // Armored torso with fiery belly plates
+          r(9, 7, 6, 7, '#1b5e20'); r(10, 8, 4, 5, '#ff7043'); r(11, 9, 2, 3, '#ffd54f');
+          // Separated sweeping tail with bright barbed tip
+          line(9, 14, 5, 16, '#1b5e20'); line(5, 16, 3, 14, '#43a047'); p(3, 13, '#ffd54f');
+          // Clawed hind leg
+          r(13, 14, 2, 3, '#2e7d32'); p(13, 17, '#ffd54f'); p(15, 17, '#ffd54f');
           break;
         case 'UND_BAT':
           line(2, 4, 9, 8, '#4a148c'); r(3, 5, 6, 4, '#7b1fa2'); p(3, 9, '#311b92'); p(6, 9, '#311b92');
@@ -1593,20 +1599,23 @@
           r(9, 5, 6, 6, '#311b92'); p(9, 3, '#6a1b9a'); p(14, 3, '#6a1b9a');
           p(10, 7, '#ff1744'); p(13, 7, '#ff1744');
           break;
-        case 'UND_SKEL': // Scary reaper-skeleton: hollow skull with red pinpricks, ragged shroud & curved scythe
+        case 'UND_SKEL': // Scary reaper-skeleton: hollow skull with red pinpricks, high-contrast ribs, ragged shroud & curved scythe
           line(17, 3, 17, 20, '#5d4037'); line(17, 3, 12, 2, '#cfd8dc'); line(12, 2, 10, 4, '#eceff1'); // wicked curved scythe
           r(8, 4, 6, 5, '#eceff1'); r(9, 4, 4, 2, '#ffffff');
           r(9, 6, 2, 2, '#080a0f'); r(12, 6, 2, 2, '#080a0f'); p(9, 6, '#ff1744'); p(12, 6, '#ff1744'); // hollow eyes + eerie red glints
           r(9, 8, 4, 1, '#080a0f'); p(10, 8, '#eceff1'); p(12, 8, '#eceff1'); // grinning skull teeth
           r(6, 9, 10, 8, '#311b92'); r(7, 15, 2, 3, '#311b92'); r(13, 15, 2, 3, '#311b92'); // ragged reaper shroud
-          r(9, 9, 4, 6, '#cfd8dc'); r(9, 11, 4, 1, '#080a0f'); r(9, 13, 4, 1, '#080a0f'); // exposed ribcage
+          // High-contrast ribcage & pelvis with dark 1px gaps so it pops on snow
+          r(9, 9, 4, 1, '#eceff1'); r(9, 10, 4, 1, '#080a0f');
+          r(9, 11, 4, 1, '#eceff1'); r(9, 12, 4, 1, '#080a0f');
+          r(9, 13, 4, 1, '#cfd8dc'); r(9, 14, 4, 1, '#080a0f');
           r(9, 16, 1, 4, '#eceff1'); r(12, 16, 1, 4, '#eceff1'); // bony legs
           break;
-        case 'UND_GHOUL':
-          r(10, 5, 5, 4, '#9ccc65'); p(11, 7, '#ff1744'); p(13, 7, '#ff1744');
+        case 'UND_GHOUL': // Pale ashy corpse skin (distinct from Sylvan green), purple rags & bloodied claws
+          r(10, 5, 5, 4, '#9ea793'); r(10, 5, 5, 1, '#7d8a74'); p(11, 7, '#ff1744'); p(13, 7, '#ff1744');
           r(8, 9, 7, 6, '#4a148c'); r(9, 10, 5, 4, '#7b1fa2');
-          line(8, 10, 4, 14, '#9ccc65'); p(4, 14, '#ef5350');
-          line(15, 10, 19, 13, '#9ccc65'); p(19, 13, '#ef5350');
+          line(8, 10, 4, 14, '#9ea793'); p(4, 14, '#ef5350');
+          line(15, 10, 19, 13, '#9ea793'); p(19, 13, '#ef5350');
           r(9, 15, 2, 5, '#78909c'); r(13, 15, 2, 5, '#78909c');
           break;
         case 'UND_WOLF':
@@ -1757,8 +1766,10 @@
             ctx.fillText(def.emoji, drawX + ts * 0.5, drawY + ts * 0.5);
           }
 
-          // Faction indicator dot with crisp dark outline for contrast on any terrain
-          const dotX = drawX + ts * 0.2, dotY = drawY + ts * 0.2, dotR = Math.max(3, ts * 0.12);
+          // Faction indicator dot tucked into top-left corner so it doesn't clip unit heads/crests/horns
+          const dotX = pixelArtMode ? (drawX + ts * 0.13) : (drawX + ts * 0.2);
+          const dotY = pixelArtMode ? (drawY + ts * 0.14) : (drawY + ts * 0.2);
+          const dotR = Math.max(3, ts * (pixelArtMode ? 0.105 : 0.12));
           ctx.fillStyle = top.owner === 'NEUTRAL' ? '#9e9e9e' : CONFIG.FACTIONS[top.owner].color;
           ctx.beginPath();
           ctx.arc(dotX, dotY, dotR, 0, Math.PI * 2);
@@ -1768,15 +1779,15 @@
           ctx.stroke();
 
           if (units.length > 1) {
-            const bx = Math.round(drawX + ts * 0.55), by = Math.round(drawY + ts * 0.58);
-            const bw = Math.round(ts * 0.40), bh = Math.round(ts * 0.32);
+            const bw = Math.round(ts * 0.36), bh = Math.round(ts * 0.27);
+            const bx = Math.round(drawX + ts - bw - 2), by = Math.round(drawY + ts - bh - 7);
             ctx.fillStyle = 'rgba(12, 16, 24, 0.88)';
             ctx.fillRect(bx, by, bw, bh);
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
             ctx.lineWidth = 1;
             ctx.strokeRect(bx + 0.5, by + 0.5, bw - 1, bh - 1);
             ctx.fillStyle = '#fff';
-            ctx.font = `bold ${Math.max(9, Math.floor(ts * 0.24))}px sans-serif`;
+            ctx.font = `bold ${Math.max(8, Math.floor(ts * 0.22))}px sans-serif`;
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             ctx.fillText(`×${units.length}`, bx + bw / 2, by + bh / 2 + 0.5);
           }
