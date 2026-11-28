@@ -1600,16 +1600,25 @@
           r(9, 15, 2, 3, '#2e7d32'); p(10, 18, '#ffd54f');
           r(14, 15, 2, 3, '#2e7d32'); p(15, 18, '#ffd54f');
           break;
-        case 'UND_BAT': // Dread bat swooping right
-          line(2, 3, 9, 8, '#4a148c'); r(3, 4, 6, 5, '#7b1fa2'); p(3, 9, '#311b92'); p(6, 9, '#311b92');
-          line(20, 5, 14, 8, '#4a148c'); r(15, 6, 5, 3, '#7b1fa2'); p(19, 9, '#311b92');
-          r(9, 5, 6, 6, '#311b92'); p(10, 3, '#6a1b9a'); p(14, 3, '#6a1b9a');
-          p(12, 7, '#ff1744'); p(14, 7, '#ff1744');
+        case 'UND_BAT': // Dread bat facing the viewer: compact body, pointed ears, red eyes & wide scalloped wings
+          // Wide V-shaped scalloped purple wings angled outward and up
+          line(2, 3, 9, 8, '#4a148c'); line(3, 3, 9, 7, '#8e24aa');
+          r(3, 5, 6, 4, '#6a1b9a'); p(2, 8, '#311b92'); p(5, 9, '#311b92'); p(8, 10, '#311b92');
+          line(21, 3, 14, 8, '#4a148c'); line(20, 3, 14, 7, '#8e24aa');
+          r(15, 5, 6, 4, '#6a1b9a'); p(21, 8, '#311b92'); p(18, 9, '#311b92'); p(15, 10, '#311b92');
+          // Central body & head facing viewer
+          r(9, 6, 6, 7, '#311b92'); r(10, 7, 4, 5, '#4a148c');
+          p(9, 4, '#6a1b9a'); p(10, 5, '#6a1b9a'); p(14, 4, '#6a1b9a'); p(13, 5, '#6a1b9a'); // pointed ears
+          p(10, 8, '#ff1744'); p(13, 8, '#ff1744'); // glowing red eyes
+          p(11, 10, '#eceff1'); p(12, 10, '#eceff1'); // tiny fangs
           break;
-        case 'UND_SKEL': // Scary reaper-skeleton facing right: hollow skull with red pinpricks, high-contrast ribs & forward scythe
-          line(16, 4, 16, 20, '#5d4037'); line(16, 4, 20, 3, '#cfd8dc'); line(20, 3, 21, 6, '#eceff1'); // forward-curved scythe (nudged in/down)
+        case 'UND_SKEL': // Scary reaper-skeleton: hollow skull, high-contrast ribs & bold crescent-blade scythe
+          line(15, 4, 14, 20, '#5d4037'); // sturdy scythe shaft held near torso
+          // Bold sweeping crescent scythe blade with metallic cutting edge
+          r(15, 3, 5, 2, '#90a4ae'); r(18, 5, 3, 2, '#90a4ae'); p(20, 7, '#90a4ae');
+          r(16, 4, 4, 1, '#eceff1'); r(19, 5, 2, 2, '#ffffff'); p(20, 8, '#eceff1');
           r(8, 4, 6, 5, '#eceff1'); r(9, 4, 4, 2, '#ffffff');
-          r(10, 6, 1, 2, '#080a0f'); r(13, 6, 1, 2, '#080a0f'); p(10, 6, '#ff1744'); p(13, 6, '#ff1744'); // hollow eyes looking right
+          r(10, 6, 1, 2, '#080a0f'); r(13, 6, 1, 2, '#080a0f'); p(10, 6, '#ff1744'); p(13, 6, '#ff1744'); // hollow eyes
           r(10, 8, 4, 1, '#080a0f'); p(11, 8, '#eceff1'); p(13, 8, '#eceff1'); // grinning skull teeth
           r(6, 9, 9, 8, '#311b92'); r(6, 15, 2, 3, '#311b92'); r(12, 15, 2, 3, '#311b92'); // ragged reaper shroud
           // High-contrast ribcage & pelvis with dark 1px gaps so it pops on snow
@@ -1618,25 +1627,35 @@
           r(9, 13, 4, 1, '#cfd8dc'); r(9, 14, 4, 1, '#080a0f');
           r(9, 16, 1, 4, '#eceff1'); r(12, 16, 1, 4, '#eceff1'); // bony legs
           break;
-        case 'UND_GHOUL': // Hunched ghoul lunging right: compact reach, pale ashy corpse skin, purple rags & bloodied claws
-          r(10, 5, 5, 4, '#9ea793'); r(10, 5, 5, 1, '#7d8a74'); p(12, 7, '#ff1744'); p(14, 7, '#ff1744');
-          r(7, 9, 7, 6, '#4a148c'); r(8, 10, 5, 4, '#7b1fa2');
-          line(14, 10, 18, 9, '#9ea793'); p(19, 9, '#ef5350'); // upper claw reaching right
-          line(14, 12, 18, 13, '#9ea793'); p(19, 13, '#ef5350'); // lower claw reaching right
-          r(8, 15, 2, 5, '#78909c'); r(12, 15, 2, 5, '#78909c');
+        case 'UND_GHOUL': // Creepy hunched ghoul: sunken dark sockets, grimacing jaw & asymmetrical downward-clawed arms
+          r(11, 5, 5, 4, '#9ea793'); r(11, 5, 5, 1, '#7d8a74'); // gaunt skull-like head
+          r(12, 6, 1, 2, '#1b1e23'); r(14, 6, 1, 2, '#1b1e23'); // hollow sunken sockets
+          r(12, 8, 3, 1, '#1b1e23'); p(13, 8, '#d7ccc8'); // jagged grimacing mouth
+          r(7, 8, 6, 3, '#4a148c'); r(8, 10, 6, 5, '#6a1b9a'); // hunched ragged torso
+          line(13, 10, 17, 13, '#9ea793'); line(17, 13, 18, 15, '#7d8a74'); p(18, 16, '#ef5350'); p(19, 15, '#ef5350'); // front clawed arm angled down
+          line(10, 11, 13, 15, '#7d8a74'); p(14, 16, '#ef5350'); // rear dangling claw
+          r(8, 15, 2, 5, '#546e7a'); r(12, 15, 2, 5, '#546e7a'); // creeping legs
           break;
-        case 'UND_WOLF':
-          p(14, 4, '#cfd8dc'); p(17, 4, '#cfd8dc');
-          r(14, 5, 6, 4, '#90a4ae'); r(18, 7, 3, 2, '#cfd8dc'); p(17, 6, '#ff1744'); p(20, 8, '#ffffff');
-          r(5, 9, 11, 5, '#455a64'); r(7, 9, 8, 2, '#8e24aa');
-          line(4, 10, 2, 13, '#78909c');
-          r(6, 14, 2, 5, '#37474f'); r(9, 14, 2, 5, '#37474f'); r(14, 14, 2, 5, '#37474f');
+        case 'UND_WOLF': // Dire wolf in predator stride: separated front/back legs, haunches, tail & sharp snout
+          p(15, 4, '#cfd8dc'); p(17, 4, '#cfd8dc'); // pointed ears
+          r(15, 5, 5, 4, '#90a4ae'); r(19, 7, 3, 2, '#cfd8dc'); p(18, 6, '#ff1744'); p(21, 9, '#ffffff'); // sharp snout & fang
+          r(12, 8, 5, 6, '#455a64'); r(6, 9, 7, 4, '#455a64'); r(8, 8, 8, 2, '#8e24aa'); // deep chest & lean waist
+          line(6, 9, 2, 12, '#78909c'); line(5, 10, 2, 13, '#546e7a'); // bushy tail
+          r(6, 13, 3, 2, '#37474f'); line(7, 15, 5, 19, '#37474f'); p(6, 19, '#cfd8dc'); // back haunched leg
+          line(8, 14, 8, 19, '#263238'); // back far leg
+          line(15, 14, 17, 19, '#37474f'); p(18, 19, '#cfd8dc'); // front striding leg
+          line(14, 14, 14, 19, '#263238'); // front planted leg
           break;
-        case 'UND_DEMON':
-          line(18, 3, 18, 18, '#37474f'); r(17, 3, 3, 6, '#78909c'); p(16, 4, '#eceff1'); p(20, 6, '#eceff1');
+        case 'UND_DEMON': // Abyssal Oni gripping a heavy iron-studded kanabo war-club
+          // Heavy spiked kanabo war-club
+          line(18, 11, 18, 17, '#4e342e'); // wooden grip shaft
+          r(17, 3, 4, 8, '#37474f'); r(18, 4, 2, 6, '#546e7a'); // thick iron club head
+          p(16, 4, '#ffd54f'); p(21, 5, '#ffd54f'); p(16, 7, '#ffd54f'); p(21, 8, '#ffd54f'); p(18, 2, '#eceff1'); // spikes
+          // Horned crimson Oni body
           line(8, 2, 9, 4, '#ffd54f'); line(15, 2, 14, 4, '#ffd54f');
           r(9, 4, 6, 4, '#d32f2f'); p(11, 5, '#ffee58'); p(14, 5, '#ffee58');
           r(7, 8, 9, 7, '#b71c1c'); r(9, 9, 5, 5, '#6a1b9a');
+          r(15, 11, 3, 2, '#d32f2f'); r(17, 11, 2, 2, '#ef5350'); // visible arm & clenched hand gripping club
           r(8, 15, 3, 5, '#8e0000'); r(13, 15, 3, 5, '#8e0000');
           break;
         default:
