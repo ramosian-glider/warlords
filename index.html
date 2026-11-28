@@ -2406,6 +2406,8 @@
         if (tBtn) tBtn.style.display = '';
         const sBtn = document.getElementById('m-sim');
         if (sBtn) sBtn.style.display = '';
+        const scBtn = document.getElementById('m-showcase');
+        if (scBtn) scBtn.style.display = '';
         showToast('Developer tools unlocked');
       }
     } else {
@@ -2495,6 +2497,54 @@
     }
   }
 
+  function buildSpriteShowcase() {
+    const unitIds = Object.keys(CONFIG.UNITS);
+    const terrains = ['PLAINS', 'WOODS', 'MOUNTAINS', 'SNOW'];
+    const w = unitIds.length, h = 8;
+    const tiles = [];
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const terrain = y < 4 ? terrains[y] : terrains[x % 4];
+        tiles.push({ x, y, terrain, hasTown: false });
+      }
+    }
+    const units = [];
+    for (let y = 0; y < 4; y++) {
+      unitIds.forEach((uId, x) => {
+        const u = createUnit(uId, CONFIG.UNITS[uId].faction, x, y);
+        if (u.type === 'NEU_MILITIA') u.revealed = true;
+        units.push(u);
+      });
+    }
+    const towns = [];
+    const owners = [null, 'EMPIRE', 'SYLVAN', 'UNDEAD'];
+    owners.forEach((own, idx) => {
+      const tx = 1 + idx * 3, ty = 5;
+      tiles[ty * w + tx].hasTown = true;
+      towns.push({
+        id: genId('t'), name: TOWN_NAMES[idx], x: tx, y: ty,
+        owner: own, income: CONFIG.TOWN_INCOME, prodUnit: null, nextProdUnit: null, turnsLeft: 0, unlockedUnits: []
+      });
+      if (own) {
+        const sample = own === 'EMPIRE' ? 'EMP_PALADIN' : own === 'SYLVAN' ? 'SYL_DRAGON' : 'UND_DEMON';
+        // Put a ×3 stack on the town next door to inspect unit-on-town & stack badge contrast
+        const tx2 = tx + 1;
+        tiles[ty * w + tx2].hasTown = true;
+        towns.push({
+          id: genId('t'), name: TOWN_NAMES[idx + 4], x: tx2, y: ty,
+          owner: own, income: CONFIG.TOWN_INCOME, prodUnit: null, nextProdUnit: null, turnsLeft: 0, unlockedUnits: []
+        });
+        for (let k = 0; k < 3; k++) units.push(createUnit(sample, own, tx2, ty));
+      }
+    });
+    return {
+      version: 1, turn: 1, activeFaction: 'EMPIRE', humanFaction: 'EMPIRE', difficulty: 'normal', mapSize: 'S', winner: null,
+      factions: { EMPIRE: { gold: 500, alive: true }, SYLVAN: { gold: 500, alive: true }, UNDEAD: { gold: 500, alive: true } },
+      map: { width: w, height: h, tiles },
+      towns, units
+    };
+  }
+
   function showMenuModal() {
     const hasAutosave = !gameState && !!StorageSystem.load('autosave');
     const continueBtn = gameState
@@ -2513,6 +2563,7 @@
       <button class="act-btn" id="m-load">Load Slot 1</button>
       <button class="act-btn" id="m-tests" style="${devTestsUnlocked ? '' : 'display:none'}">Run Unit Tests</button>
       <button class="act-btn" id="m-sim" style="${devTestsUnlocked ? '' : 'display:none'}">Run Balance Simulation</button>
+      <button class="act-btn" id="m-showcase" style="${devTestsUnlocked ? '' : 'display:none'}">Load Sprite Showcase</button>
     `, '', true);
 
     document.getElementById('m-new-game').onclick = showNewGameModal;
@@ -2560,6 +2611,14 @@
       document.getElementById('t-back').onclick = showMenuModal;
     };
     document.getElementById('m-sim').onclick = () => showSimModal((gameState && gameState.mapSize) || 'S');
+    document.getElementById('m-showcase').onclick = () => {
+      gameState = buildSpriteShowcase();
+      StorageSystem.save(gameState, 'autosave');
+      selectedUnitId = null; selectedTile = null; reachableCache = null;
+      centerCameraOn(7, 3);
+      closeModal(); updateHUD(); render();
+      showToast('Sprite Showcase loaded');
+    };
   }
 
   document.getElementById('menu-btn').onclick = showMenuModal;
